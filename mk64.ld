@@ -169,6 +169,8 @@ SECTIONS
       BUILD_DIR/asm/os/osMapTLBRdb.o(.text);
       BUILD_DIR/src/os/osPiRawReadIo.o(.text*);
       BUILD_DIR/src/os/osPiRawWriteIo.o(.text*);
+      BUILD_DIR/src/os/osPiReadIo.o(.text*);
+      BUILD_DIR/src/os/osPiWriteIo.o(.text*);
       BUILD_DIR/src/os/__osSetHWIntrRoutine.o(.text*);
       BUILD_DIR/src/os/__osLeoInterrupt.o(.text*);
       BUILD_DIR/src/os/osTimer.o(.text*);
