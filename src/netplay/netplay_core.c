@@ -320,7 +320,7 @@ s32 netplay_detect(void) {
 void netplay_update(void) {
     s32 i;
 
-    if (!gNetplayState.enabled) {
+    if (!gNetplayState.enabled || !gNetplayState.connected) {
         return;
     }
 
