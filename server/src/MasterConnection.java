@@ -45,7 +45,7 @@ public class MasterConnection extends Thread {
 
     @Override
     public void run() {
-        handler = new UDPHandler(socket, masterAddress, masterPort);
+        handler = new UDPHandler(socket, masterAddress.getHostAddress(), masterPort);
 
         try {
             // Initial registration
@@ -64,11 +64,11 @@ public class MasterConnection extends Thread {
     }
 
     private void sendRegister() throws Exception {
-        handler.SendPacket(new S64Packet("REGISTER", buildMasterData(), PacketFlag.FLAG_EXPLICITACK));
+        handler.SendPacket(new S64Packet("REGISTER", buildMasterData(), PacketFlag.FLAG_EXPLICITACK.GetInt()));
     }
 
     private void sendHeartbeat() throws Exception {
-        handler.SendPacket(new S64Packet("HEARTBEAT", buildMasterData(), PacketFlag.FLAG_EXPLICITACK));
+        handler.SendPacket(new S64Packet("HEARTBEAT", buildMasterData(), PacketFlag.FLAG_EXPLICITACK.GetInt()));
     }
 
     private byte[] buildMasterData() throws IOException {

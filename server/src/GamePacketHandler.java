@@ -266,7 +266,7 @@ public class GamePacketHandler {
         if (clientData == null || clientData.length < 9) return;
 
         // Data already has [slot:1][frame:4][input:4] — relay as REMOTE_INPUT
-        NetLibPacket relay = new NetLibPacket(PKTID_REMOTE_INPUT, clientData, PacketFlag.FLAG_UNRELIABLE);
+        NetLibPacket relay = new NetLibPacket(PKTID_REMOTE_INPUT, clientData, PacketFlag.FLAG_UNRELIABLE.GetInt());
         room.broadcastExcept(slot, relay);
     }
 

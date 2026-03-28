@@ -64,7 +64,7 @@ public class ClientConnection extends Thread {
 
     @Override
     public void run() {
-        handler = new UDPHandler(socket, address, port);
+        handler = new UDPHandler(socket, address.getHostAddress(), port);
 
         try {
             while (running) {
@@ -114,7 +114,7 @@ public class ClientConnection extends Thread {
         if (pkt.GetType().equals("DISCOVER")) {
             String identifier = new String(pkt.GetData(), "UTF-8");
             byte[] response = N64NetplayServer.buildDiscoverResponse(identifier);
-            handler.SendPacket(new S64Packet("DISCOVER", response, PacketFlag.FLAG_UNRELIABLE));
+            handler.SendPacket(new S64Packet("DISCOVER", response, PacketFlag.FLAG_UNRELIABLE.GetInt()));
         }
     }
 
