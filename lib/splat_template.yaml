@@ -1,0 +1,46 @@
+# Splat configuration template for a new N64 decomp
+#
+# Usage:
+#   1. Copy this file to your game's directory as config.yaml
+#   2. Fill in the ROM name, sha1, and entry point
+#   3. Run: splat split config.yaml
+#
+# This will generate:
+#   - Assembly files for each function
+#   - Binary data segments
+#   - A skeleton Makefile and linker script
+#   - Symbol tables
+#
+# Reference: https://github.com/ethteck/splat
+
+name: your_game_name
+sha1: YOUR_ROM_SHA1_HERE
+options:
+  basename: your_game
+  target_path: baserom.z64
+  base_path: .
+  compiler: IDO
+  find_file_boundaries: yes
+  header_encoding: ASCII
+  platform: n64
+  # Use this to auto-detect libultra functions
+  libultra_symbols: yes
+  # Hardware registers
+  hardware_regs: yes
+
+segments:
+  # ROM header
+  - [0x0, bin, header]
+  # Boot code (IPL3)
+  - [0x40, bin, ipl3]
+  # Main code segment — splat will auto-split into functions
+  - name: main
+    type: code
+    start: 0x1000
+    vram: 0x80000400
+    subsegments:
+      # splat will populate this after first split
+      - [auto, c]
+      - [auto, data]
+      - [auto, rodata]
+      - [auto, bss]

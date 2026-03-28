@@ -19,3 +19,12 @@
 [submodule "extern/N64-NetLib"]
 	path = extern/N64-NetLib
 	url = https://github.com/buu342/N64-NetLib.git
+[submodule "extern/splat"]
+	path = extern/splat
+	url = https://github.com/ethteck/splat.git
+[submodule "extern/m2c"]
+	path = extern/m2c
+	url = https://github.com/matt-kempster/m2c.git
+[submodule "extern/N64LoaderWV"]
+	path = extern/N64LoaderWV
+	url = https://github.com/zeroKilo/N64LoaderWV.git
