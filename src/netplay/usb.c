@@ -477,8 +477,8 @@ char usb_initialize(void)
             return 0;
     }
 
-    // Send a heartbeat
-    usb_sendheartbeat();
+    // Don't send heartbeat during init — blocks if no PC host is listening.
+    // Heartbeat will be sent when netplay actually connects to a server.
     return 1;
 }
 
