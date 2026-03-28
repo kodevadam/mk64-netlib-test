@@ -16,6 +16,16 @@
 
 #include <ultra64.h>
 
+#ifndef TRUE
+#define TRUE  1
+#endif
+#ifndef FALSE
+#define FALSE 0
+#endif
+
+/* memset — may not be declared in decomp libc headers */
+extern void *memset(void *, int, unsigned int);
+
 /*********************************
        NetLib Packet Types
 *********************************/
