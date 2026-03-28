@@ -372,6 +372,9 @@ ASFLAGS = -march=vr4300 -mabi=32 -I include -I $(BUILD_DIR) $(VERSION_ASFLAGS) $
 OBJCOPYFLAGS = --pad-to=0xC00000 --gap-fill=0xFF
 
 LDFLAGS = -T undefined_syms.txt -T $(BUILD_DIR)/$(LD_SCRIPT) -Map $(BUILD_DIR)/$(TARGET).map --no-check-sections
+ifeq ($(COMPILER),gcc)
+  LDFLAGS += -L$(shell $(CC) -mabi=32 -march=vr4300 -print-file-name=libgcc.a | xargs dirname) -lgcc
+endif
 
 # Ensure that gcc treats the code as 32-bit
 CC_CHECK += -m32
