@@ -21,6 +21,7 @@
 #include "code_80057C60.h"
 #include "cpu_vehicles_camera_path.h"
 #include "sounds.h"
+#include "netplay/netplay.h"
 
 extern s32 D_8018D168;
 
@@ -4791,6 +4792,23 @@ void handle_a_press_for_all_players_during_race(void) {
                 handle_a_press_for_player_during_race(gPlayerFour, gControllerFour, 3);
             }
             break;
+    }
+
+    // Process netplay players 5-8 (network-controlled, beyond split-screen).
+    // These use extended Controller structs separate from gControllers[4..7]
+    // which MK64 reserves for combined-input and ghost replay.
+    if (netplay_is_active() && netplay_get_player_count() > 4) {
+        Player* extPlayers[4];
+        s32 i;
+        extPlayers[0] = gPlayerFive;
+        extPlayers[1] = gPlayerSix;
+        extPlayers[2] = gPlayerSeven;
+        extPlayers[3] = gPlayerEight;
+        for (i = 0; i < netplay_get_player_count() - 4 && i < 4; i++) {
+            if (extPlayers[i]->type & PLAYER_HUMAN) {
+                handle_a_press_for_player_during_race(extPlayers[i], netplay_get_controller(i + 4), (s8)(i + 4));
+            }
+        }
     }
 }
 

@@ -15,6 +15,7 @@
 #include <ultra64.h>
 #include <defines.h>
 #include <course.h>
+#include <common_structs.h>
 
 #include "netplay_core.h"
 #include "netlib.h"
@@ -146,6 +147,92 @@ void netplay_game_seed_rng(void) {
         gNetplayState.rngSeed = np_pi_read(NP_REG_RNG_SEED);
     }
     gRandomSeed16 = (u16)(gNetplayState.rngSeed & 0xFFFF);
+}
+
+/*********************************
+   Extended Controller Update
+*********************************/
+
+/**
+ * Separate Controller structs for network players 5-8 (slots 4-7).
+ *
+ * gControllers[4..7] can't be used because MK64 repurposes them:
+ *   gControllers[4] = gControllerFive = OR of all physical controllers
+ *   gControllers[5] = gControllerSix  = time trial ghost 1
+ *   gControllers[6] = gControllerSeven = time trial ghost 2
+ *   gControllers[7] = gControllerEight = time trial replay
+ *
+ * So we maintain our own array. handle_a_press_for_player_during_race()
+ * can accept any Controller* — it doesn't have to be from gControllers[].
+ */
+struct Controller gNetplayExtControllers[4]; // For slots 4, 5, 6, 7
+
+/**
+ * Get the Controller struct for a given player slot.
+ * Slots 0-3: gControllers[slot] (standard).
+ * Slots 4-7: gNetplayExtControllers[slot-4] (netplay extended).
+ */
+struct Controller* netplay_get_controller(s32 slot) {
+    if (slot < 4) {
+        return &gControllers[slot];
+    }
+    if (slot < 8) {
+        return &gNetplayExtControllers[slot - 4];
+    }
+    return &gControllers[0]; // fallback
+}
+
+/**
+ * Update extended controllers for network players in slots 4-7.
+ * Writes packed remote inputs into gNetplayExtControllers[], computing
+ * pressed/depressed/stick the same way update_controller() does.
+ *
+ * Call once per frame after read_controllers() and netplay_update().
+ */
+void netplay_update_extended_controllers(void) {
+    s32 i;
+    u32 packed;
+    struct Controller *ctrl;
+    u16 newButtons, stick;
+
+    if (!gNetplayState.enabled || gNetplayState.playerCount <= 4) {
+        return;
+    }
+
+    for (i = 4; i < gNetplayState.playerCount && i < NP_MAX_PLAYERS; i++) {
+        ctrl = &gNetplayExtControllers[i - 4];
+
+        if (gNetplayState.disconnectMask & (1 << i)) {
+            memset(ctrl, 0, sizeof(struct Controller));
+            continue;
+        }
+
+        if (!(gNetplayState.ctrlMask & (1 << i))) {
+            continue;
+        }
+
+        // Unpack remote input
+        packed = gNetplayState.remoteInputs[i];
+        newButtons = NP_UNPACK_BUTTONS(packed);
+
+        ctrl->rawStickX = (s16)NP_UNPACK_STICK_X(packed);
+        ctrl->rawStickY = (s16)NP_UNPACK_STICK_Y(packed);
+
+        // Compute pressed/depressed (same logic as update_controller)
+        ctrl->buttonPressed = newButtons & (newButtons ^ ctrl->button);
+        ctrl->buttonDepressed = ctrl->button & (newButtons ^ ctrl->button);
+        ctrl->button = newButtons;
+
+        // Compute stick direction (same thresholds as update_controller)
+        stick = 0;
+        if (ctrl->rawStickX < -50) stick |= L_JPAD;
+        if (ctrl->rawStickX > 50)  stick |= R_JPAD;
+        if (ctrl->rawStickY < -50) stick |= D_JPAD;
+        if (ctrl->rawStickY > 50)  stick |= U_JPAD;
+        ctrl->stickPressed = stick & (stick ^ ctrl->stickDirection);
+        ctrl->stickDepressed = ctrl->stickDirection & (stick ^ ctrl->stickDirection);
+        ctrl->stickDirection = stick;
+    }
 }
 
 /*********************************

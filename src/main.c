@@ -365,6 +365,11 @@ void read_controllers(void) {
     update_controller(1);
     update_controller(2);
     update_controller(3);
+
+    // Update extended controllers for netplay players 5-8
+    if (netplay_is_active()) {
+        netplay_update_extended_controllers();
+    }
     gControllerFive->button = (s16) (((gControllerOne->button | gControllerTwo->button) | gControllerThree->button) |
                                      gControllerFour->button);
     gControllerFive->buttonPressed =

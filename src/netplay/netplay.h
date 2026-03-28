@@ -20,4 +20,12 @@ void netplay_send_game_config(void);
 // Call after setup_race() completes (after spawn_players).
 void netplay_remap_cameras(void);
 
+// Write network inputs into extended controllers for players 5-8.
+// Call once per frame after read_controllers.
+void netplay_update_extended_controllers(void);
+
+// Get the Controller struct for any player slot (0-7).
+// Slots 0-3 return gControllers[], slots 4-7 return netplay extended.
+struct Controller* netplay_get_controller(s32 slot);
+
 #endif
