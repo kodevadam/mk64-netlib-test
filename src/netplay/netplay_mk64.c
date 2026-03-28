@@ -126,9 +126,11 @@ void netplay_game_setup(void) {
         gCCSelection = CC_100;
     }
 
-    // Character selections
-    for (i = 0; i < NP_MAX_PLAYERS; i++) {
-        if (gNetplayState.cfgCharacters[i] >= 0 && gNetplayState.cfgCharacters[i] <= BOWSER) {
+    // Character selections (only slots 0-3 go in gCharacterSelections;
+    // slots 4-7 stay in gNetplayState.cfgCharacters)
+    for (i = 0; i < NP_MAX_LOCAL; i++) {
+        if (i < gNetplayState.playerCount &&
+            gNetplayState.cfgCharacters[i] >= 0 && gNetplayState.cfgCharacters[i] <= BOWSER) {
             gCharacterSelections[i] = gNetplayState.cfgCharacters[i];
         }
     }
@@ -347,7 +349,7 @@ void netplay_game_send_config(void) {
         netlib_writeword((u16)gCurrentCourseId);
         netlib_writebyte((u8)gCCSelection);
         for (i = 0; i < NP_MAX_PLAYERS; i++) {
-            netlib_writebyte((u8)gCharacterSelections[i]);
+            netlib_writebyte((u8)(i < NP_MAX_LOCAL ? gCharacterSelections[i] : gNetplayState.cfgCharacters[i]));
         }
         netlib_writedword(seed);
         netlib_writebyte((u8)gNetplayState.inputDelay);
@@ -456,7 +458,7 @@ void netplay_render_results(void) {
             ply = &gPlayers[i];
             if (!(ply->type & PLAYER_EXISTS)) continue;
             if (ply->currentRank == rank) {
-                charId = gCharacterSelections[i];
+                charId = (i < NP_MAX_LOCAL) ? gCharacterSelections[i] : gNetplayState.cfgCharacters[i];
                 if (charId >= 0 && charId <= BOWSER) {
                     name = D_800E76A8[charId];
                 } else {

@@ -76,7 +76,7 @@ s32 gMenuSelection = LOGO_INTRO_MENU;
 s32 gFadeModeSelection = FADE_MODE_NONE;
 
 // Default selected character for each player
-s8 gCharacterSelections[8] = { MARIO, LUIGI, YOSHI, TOAD, DK, WARIO, PEACH, BOWSER };
+s8 gCharacterSelections[4] = { MARIO, LUIGI, YOSHI, TOAD };
 
 // The current row selected in the mode column for each player indexed
 // 0-1 1p / 0-2 2p´/ 0-1 3p / 0-1 4p
