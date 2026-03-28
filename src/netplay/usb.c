@@ -626,7 +626,7 @@ char usb_write(int datatype, const void* data, int size)
     @return The data header, or 0
 ==============================*/
 
-u32 usb_poll(void)
+unsigned long usb_poll(void)
 {
     // If no debug cart exists, stop
     if (usb_cart == CART_NONE)
