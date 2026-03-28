@@ -283,6 +283,9 @@ s32 netplay_detect(void) {
         return TRUE;
     }
 
+    // SC64 SHM path disabled — osPiReadIo at 0x1FFE1F80 causes freeze.
+    // Need to investigate PI manager state during early boot.
+#if 0
     // Fallback: SC64 shared memory bridge
     {
         u32 magic = np_pi_read(NP_REG_MAGIC);
@@ -307,6 +310,7 @@ s32 netplay_detect(void) {
             return TRUE;
         }
     }
+#endif
 
     gNetplayState.mode = NP_MODE_DISABLED;
     gNetplayState.enabled = FALSE;
