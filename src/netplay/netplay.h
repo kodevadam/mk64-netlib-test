@@ -36,8 +36,11 @@
 #define NP_UNPACK_STICK_X(packed)  ((s8)(((packed) >> 8) & 0xFF))
 #define NP_UNPACK_STICK_Y(packed)  ((s8)((packed) & 0xFF))
 
-// Max players supported over netplay
-#define NP_MAX_PLAYERS 4
+// Max players supported over netplay (8 karts in MK64)
+#define NP_MAX_PLAYERS 8
+
+// Max local players per console (physical controllers)
+#define NP_MAX_LOCAL 4
 
 // Input delay ring buffer size (max frames of delay)
 #define NP_INPUT_DELAY_MAX 8
@@ -90,8 +93,10 @@ typedef enum {
 
 typedef struct {
     NetplayMode mode;
-    u8 localPlayer;       // Which player slot is ours (0-3)
-    u8 playerCount;       // Total number of players in session
+    u8 localPlayer;       // First local player's network slot (0-7)
+    u8 localPlayerCount;  // How many physical controllers on this console (1-4)
+    u8 localSlots[NP_MAX_LOCAL]; // Network slot for each local controller
+    u8 playerCount;       // Total number of players in session (1-8)
     u8 ctrlMask;          // Bitmask of remote-controlled slots
     u8 enabled;           // Whether netplay is currently active
     u8 inRace;            // Whether we're currently racing
@@ -103,8 +108,8 @@ typedef struct {
     u8 disconnectMask;    // Bitmask of disconnected players
     u32 remoteInputs[NP_MAX_PLAYERS]; // Cached remote controller inputs
     u32 remoteFrames[NP_MAX_PLAYERS]; // Frame number for each remote input
-    // Input delay ring buffer for local input
-    u32 inputDelayBuffer[NP_INPUT_DELAY_MAX];
+    // Input delay ring buffer for local inputs (per local player)
+    u32 inputDelayBuffer[NP_MAX_LOCAL][NP_INPUT_DELAY_MAX];
     u8 inputDelayHead;    // Write position in ring buffer
     // Game config (received from server/host)
     u8 cfgMode;           // Game mode (VERSUS, BATTLE, etc.)
@@ -149,6 +154,10 @@ void netplay_handle_disconnects(void);
 
 // Pause coordination - only local player can pause
 s32  netplay_should_allow_pause(s32 controllerIndex);
+
+// Host sends game config to server for relay to all players.
+// Call after menu selections are finalized (before race start).
+void netplay_send_game_config(void);
 
 // State queries
 s32  netplay_is_active(void);

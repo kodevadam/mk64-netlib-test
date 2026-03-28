@@ -182,6 +182,9 @@ void setup_race(void) {
     // before the race initializes. This sets player count, characters,
     // course, mode, and seeds the RNG for deterministic sync.
     if (netplay_is_active()) {
+        // Host (player 0) broadcasts their menu selections to all players
+        netplay_send_game_config();
+        // All players apply the network config (host's or received from server)
         netplay_setup_game();
         netplay_seed_rng();
     }

@@ -44,6 +44,8 @@ static void np_pi_write(u32 offset, u32 value) {
  */
 static void pkt_assign_player(size_t size) {
     uint8_t playerNum, playerCount;
+    s32 i;
+    u8 localMask;
     (void)size;
 
     netlib_readbyte(&playerNum);
@@ -55,8 +57,18 @@ static void pkt_assign_player(size_t size) {
 
     netlib_setclient(playerNum + 1); // NetLib clients are 1-indexed
 
-    // Build control mask: all players except us
-    gNetplayState.ctrlMask = (u8)((1 << playerCount) - 1) & ~(1 << playerNum);
+    // Assign consecutive slots for local players.
+    // E.g., if localPlayerCount=2 and base slot=2, local slots are 2,3.
+    for (i = 0; i < gNetplayState.localPlayerCount; i++) {
+        gNetplayState.localSlots[i] = playerNum + i;
+    }
+
+    // Build control mask: all players except our local slots
+    localMask = 0;
+    for (i = 0; i < gNetplayState.localPlayerCount; i++) {
+        localMask |= (1 << gNetplayState.localSlots[i]);
+    }
+    gNetplayState.ctrlMask = (u8)((1 << playerCount) - 1) & ~localMask;
 }
 
 /**
@@ -156,11 +168,12 @@ static void netplay_register_callbacks(void) {
 *********************************/
 
 void netplay_init(void) {
-    s32 i;
+    s32 i, j;
     memset(&gNetplayState, 0, sizeof(NetplayState));
     gNetplayState.mode = NP_MODE_DISABLED;
     gNetplayState.enabled = FALSE;
     gNetplayState.localPlayer = 0;
+    gNetplayState.localPlayerCount = 1;
     gNetplayState.playerCount = 1;
     gNetplayState.ctrlMask = 0;
     gNetplayState.frameCounter = 0;
@@ -172,8 +185,11 @@ void netplay_init(void) {
     gNetplayState.connected = FALSE;
     gNetplayState.configReceived = FALSE;
     gNetplayState.inRace = FALSE;
-    for (i = 0; i < NP_INPUT_DELAY_MAX; i++) {
-        gNetplayState.inputDelayBuffer[i] = 0;
+    for (i = 0; i < NP_MAX_LOCAL; i++) {
+        gNetplayState.localSlots[i] = (u8)i;
+        for (j = 0; j < NP_INPUT_DELAY_MAX; j++) {
+            gNetplayState.inputDelayBuffer[i][j] = 0;
+        }
     }
     for (i = 0; i < NP_MAX_PLAYERS; i++) {
         gNetplayState.remoteFrames[i] = 0;
@@ -188,6 +204,19 @@ void netplay_init(void) {
  * Returns TRUE if a connection was established.
  */
 s32 netplay_detect(void) {
+    s32 i;
+
+    // Count physical controllers (gControllerBits is set by osContInit)
+    gNetplayState.localPlayerCount = 0;
+    for (i = 0; i < NP_MAX_LOCAL; i++) {
+        if (gControllerBits & (1 << i)) {
+            gNetplayState.localPlayerCount++;
+        }
+    }
+    if (gNetplayState.localPlayerCount == 0) {
+        gNetplayState.localPlayerCount = 1; // At least 1
+    }
+
     // Try N64-NetLib first — works on SC64, 64Drive, and EverDrive
     netlib_initialize();
     if (usb_getcart() != CART_NONE) {
@@ -283,39 +312,74 @@ void netplay_update(void) {
      Controller Override
 *********************************/
 
-void netplay_apply_controller_overrides(OSContPad *pads) {
-    OSContPad localPad;
+/**
+ * Check if a network slot belongs to one of our local controllers.
+ * Returns the local controller index (0-3) or -1 if remote.
+ */
+static s32 np_local_index_for_slot(s32 slot) {
     s32 i;
-    u32 packed;
-    u32 delayedInput;
+    for (i = 0; i < gNetplayState.localPlayerCount; i++) {
+        if (gNetplayState.localSlots[i] == slot) {
+            return i;
+        }
+    }
+    return -1;
+}
+
+void netplay_apply_controller_overrides(OSContPad *pads) {
+    OSContPad localPads[NP_MAX_LOCAL];
+    s32 i, localIdx;
+    u32 packed, delayedInput;
 
     if (!gNetplayState.enabled) {
         return;
     }
 
-    // Save local player's physical input (always from port 0)
-    localPad = pads[0];
+    // Save all local players' physical inputs (ports 0..localPlayerCount-1)
+    for (i = 0; i < gNetplayState.localPlayerCount; i++) {
+        localPads[i] = pads[i];
 
-    // Send local input
-    netplay_send_local_input(localPad.button, localPad.stick_x, localPad.stick_y);
+        // Send each local input to network
+        packed = NP_PACK_INPUT(localPads[i].button, localPads[i].stick_x, localPads[i].stick_y);
 
-    // Input delay buffering
-    packed = NP_PACK_INPUT(localPad.button, localPad.stick_x, localPad.stick_y);
+        if (gNetplayState.mode == NP_MODE_NETLIB) {
+            netlib_start(PKTID_PLAYER_INPUT);
+            netlib_writebyte((uint8_t)gNetplayState.localSlots[i]);
+            netlib_writedword(gNetplayState.frameCounter);
+            netlib_writedword(packed);
+            netlib_broadcast();
+        } else {
+            u32 offset = NP_REG_LOCAL_0 + (gNetplayState.localSlots[i] * 4);
+            np_pi_write(offset, packed);
+        }
+
+        // Input delay buffering per local player
+        if (gNetplayState.inputDelay > 0) {
+            gNetplayState.inputDelayBuffer[i][gNetplayState.inputDelayHead] = packed;
+        }
+    }
     if (gNetplayState.inputDelay > 0) {
-        gNetplayState.inputDelayBuffer[gNetplayState.inputDelayHead] = packed;
         gNetplayState.inputDelayHead = (gNetplayState.inputDelayHead + 1) % NP_INPUT_DELAY_MAX;
-        i = (gNetplayState.inputDelayHead + NP_INPUT_DELAY_MAX - gNetplayState.inputDelay) % NP_INPUT_DELAY_MAX;
-        delayedInput = gNetplayState.inputDelayBuffer[i];
-    } else {
-        delayedInput = packed;
     }
 
-    // Fill all player slots
-    for (i = 0; i < NP_MAX_PLAYERS; i++) {
-        if (i == gNetplayState.localPlayer) {
-            pads[i].button = NP_UNPACK_BUTTONS(delayedInput);
-            pads[i].stick_x = NP_UNPACK_STICK_X(delayedInput);
-            pads[i].stick_y = NP_UNPACK_STICK_Y(delayedInput);
+    // Fill all game slots (up to playerCount, max 4 for OSContPad array)
+    for (i = 0; i < 4 && i < gNetplayState.playerCount; i++) {
+        localIdx = np_local_index_for_slot(i);
+
+        if (localIdx >= 0) {
+            // This slot is one of our local controllers
+            if (gNetplayState.inputDelay > 0) {
+                s32 readPos = (gNetplayState.inputDelayHead + NP_INPUT_DELAY_MAX
+                               - gNetplayState.inputDelay) % NP_INPUT_DELAY_MAX;
+                delayedInput = gNetplayState.inputDelayBuffer[localIdx][readPos];
+                pads[i].button = NP_UNPACK_BUTTONS(delayedInput);
+                pads[i].stick_x = NP_UNPACK_STICK_X(delayedInput);
+                pads[i].stick_y = NP_UNPACK_STICK_Y(delayedInput);
+            } else {
+                pads[i].button = localPads[localIdx].button;
+                pads[i].stick_x = localPads[localIdx].stick_x;
+                pads[i].stick_y = localPads[localIdx].stick_y;
+            }
             pads[i].errno = 0;
         } else if (gNetplayState.disconnectMask & (1 << i)) {
             pads[i].button = 0;
@@ -383,6 +447,11 @@ s32 netplay_wait_for_remote_inputs(void) {
        Local Input Send
 *********************************/
 
+/**
+ * Send a single player's input. Called externally or for backward compat.
+ * In multi-local mode, netplay_apply_controller_overrides sends all
+ * local inputs directly, so this is mainly for single-local use.
+ */
 void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y) {
     u32 packed;
 
@@ -393,13 +462,12 @@ void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y) {
     packed = NP_PACK_INPUT(buttons, stick_x, stick_y);
 
     if (gNetplayState.mode == NP_MODE_NETLIB) {
-        // Send input packet to server for relay to other players
         netlib_start(PKTID_PLAYER_INPUT);
+        netlib_writebyte((uint8_t)gNetplayState.localPlayer);
         netlib_writedword(gNetplayState.frameCounter);
         netlib_writedword(packed);
         netlib_broadcast();
     } else {
-        // SC64 shared memory
         u32 offset = NP_REG_LOCAL_0 + (gNetplayState.localPlayer * 4);
         np_pi_write(offset, packed);
     }
@@ -426,10 +494,13 @@ void netplay_setup_game(void) {
             }
         }
 
+        // Total players in the session (all consoles combined)
         gPlayerCount = gNetplayState.playerCount;
         gPlayerCountSelection1 = gNetplayState.playerCount;
 
-        switch (gNetplayState.playerCount) {
+        // Screen mode is based on LOCAL player count (this console only).
+        // Remote players exist in the game world but don't get viewports.
+        switch (gNetplayState.localPlayerCount) {
             case 1:
                 gScreenModeSelection = SCREEN_MODE_1P;
                 break;
@@ -471,7 +542,7 @@ void netplay_setup_game(void) {
         switch (gNetplayState.playerCount) {
             case 1: gScreenModeSelection = SCREEN_MODE_1P; break;
             case 2: gScreenModeSelection = SCREEN_MODE_2P_SPLITSCREEN_HORIZONTAL; break;
-            case 3: case 4: gScreenModeSelection = SCREEN_MODE_3P_4P_SPLITSCREEN; break;
+            default: gScreenModeSelection = SCREEN_MODE_3P_4P_SPLITSCREEN; break;
         }
         gActiveScreenMode = gScreenModeSelection;
 
@@ -547,7 +618,8 @@ s32 netplay_should_allow_pause(s32 controllerIndex) {
     if (!gNetplayState.enabled) {
         return TRUE;
     }
-    return (controllerIndex == gNetplayState.localPlayer);
+    // Allow any local player to pause
+    return (np_local_index_for_slot(controllerIndex) >= 0);
 }
 
 /*********************************
@@ -563,6 +635,51 @@ void netplay_seed_rng(void) {
     }
     // In NetLib mode, rngSeed was set by pkt_server_config callback
     gRandomSeed16 = (u16)(gNetplayState.rngSeed & 0xFFFF);
+}
+
+/*********************************
+     Host Config Broadcast
+*********************************/
+
+/**
+ * Host (player 0) sends the current game configuration to the server,
+ * which relays it to all connected players via PKTID_SERVER_CONFIG.
+ *
+ * Payload: [mode:1][course:2][cc:1][char0:1][char1:1][char2:1][char3:1][rng_seed:4][input_delay:1]
+ *
+ * Call this after the host has made menu selections and before the race starts.
+ * In NetLib mode, the server stores this and forwards to late joiners too.
+ */
+void netplay_send_game_config(void) {
+    s32 i;
+    u32 seed;
+
+    if (!gNetplayState.enabled) {
+        return;
+    }
+
+    // Only the host (player 0) should send config
+    if (gNetplayState.localPlayer != 0) {
+        return;
+    }
+
+    if (gNetplayState.mode == NP_MODE_NETLIB) {
+        // Generate a random seed for RNG sync
+        seed = (u32)osGetCount();
+        gNetplayState.rngSeed = seed;
+
+        netlib_start(PKTID_GAME_CONFIG);
+        netlib_writebyte((uint8_t)gModeSelection);
+        netlib_writeword((uint16_t)gCurrentCourseId);
+        netlib_writebyte((uint8_t)gCCSelection);
+        for (i = 0; i < NP_MAX_PLAYERS; i++) {
+            netlib_writebyte((uint8_t)gCharacterSelections[i]);
+        }
+        netlib_writedword(seed);
+        netlib_writebyte((uint8_t)gNetplayState.inputDelay);
+        netlib_sendtoserver();
+    }
+    // In SC64 SHM mode, the bridge reads config from its own source
 }
 
 /*********************************
