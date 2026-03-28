@@ -74,6 +74,11 @@ SECTIONS
       BUILD_DIR/src/menu_items.jp.o(.text*);
       BUILD_DIR/src/code_800AF9B0.o(.text*);
       BUILD_DIR/src/menus.o(.text*);
+      BUILD_DIR/src/netplay/netplay.o(.text*);
+      BUILD_DIR/src/netplay/netplay_core.o(.text*);
+      BUILD_DIR/src/netplay/netplay_mk64.o(.text*);
+      BUILD_DIR/src/netplay/netlib.o(.text*);
+      BUILD_DIR/src/netplay/usb.o(.text*);
       BUILD_DIR/src/save.o(.text*);
       BUILD_DIR/src/audio/synthesis.o(.text*);
       BUILD_DIR/src/audio/heap.o(.text*);
@@ -235,6 +240,11 @@ SECTIONS
       BUILD_DIR/src/menu_items.jp.o(.data*);
       BUILD_DIR/src/code_800AF9B0.o(.data*);
       BUILD_DIR/src/menus.o(.data*);
+      BUILD_DIR/src/netplay/netplay.o(.data*);
+      BUILD_DIR/src/netplay/netplay_core.o(.data*);
+      BUILD_DIR/src/netplay/netplay_mk64.o(.data*);
+      BUILD_DIR/src/netplay/netlib.o(.data*);
+      BUILD_DIR/src/netplay/usb.o(.data*);
       BUILD_DIR/src/save.o(.data*);
       BUILD_DIR/assets/code/data_800E8700/data_800E8700.o(.data*);
       BUILD_DIR/src/audio/synthesis.o(.data*);
@@ -287,6 +297,11 @@ SECTIONS
       BUILD_DIR/src/menu_items.jp.o(.rodata*);
       BUILD_DIR/src/code_800AF9B0.o(.rodata*);
       BUILD_DIR/src/menus.o(.rodata*);
+      BUILD_DIR/src/netplay/netplay.o(.rodata*);
+      BUILD_DIR/src/netplay/netplay_core.o(.rodata*);
+      BUILD_DIR/src/netplay/netplay_mk64.o(.rodata*);
+      BUILD_DIR/src/netplay/netlib.o(.rodata*);
+      BUILD_DIR/src/netplay/usb.o(.rodata*);
       BUILD_DIR/src/save.o(.rodata*);
       BUILD_DIR/src/audio/heap.o(.rodata*);
       BUILD_DIR/src/audio/load.o(.rodata*);
@@ -338,6 +353,11 @@ SECTIONS
       BUILD_DIR/src/menu_items.jp.o(.bss*);
       BUILD_DIR/src/code_800AF9B0.o(.bss*);
       BUILD_DIR/src/menus.o(.bss*);
+      BUILD_DIR/src/netplay/netplay.o(.bss*);
+      BUILD_DIR/src/netplay/netplay_core.o(.bss*);
+      BUILD_DIR/src/netplay/netplay_mk64.o(.bss*);
+      BUILD_DIR/src/netplay/netlib.o(.bss*);
+      BUILD_DIR/src/netplay/usb.o(.bss*);
       BUILD_DIR/src/save.o(.bss*);
       #if DEBUG
          BUILD_DIR/src/os/osCartRomInit.o(.bss*);
