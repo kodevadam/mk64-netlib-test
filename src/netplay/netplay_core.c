@@ -33,14 +33,17 @@ NetplayState gNetplayState;
      SC64 PI Bus Access
 *********************************/
 
+extern s32 osPiRawReadIo(u32, u32 *);
+extern s32 osPiRawWriteIo(u32, u32);
+
 u32 np_pi_read(u32 offset) {
     u32 value = 0;
-    osPiReadIo(NP_SHM_BASE + offset, &value);
+    osPiRawReadIo(NP_SHM_BASE + offset, &value);
     return value;
 }
 
 void np_pi_write(u32 offset, u32 value) {
-    osPiWriteIo(NP_SHM_BASE + offset, value);
+    osPiRawWriteIo(NP_SHM_BASE + offset, value);
 }
 
 /*********************************
