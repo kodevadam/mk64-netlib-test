@@ -22,8 +22,6 @@ https://github.com/buu342/N64-UNFLoader
     #define FALSE 0
 #endif
 
-/* memset — decomp's libc string.h omits it */
-extern void *memset(void *, int, unsigned int);
 
 
 /*********************************
@@ -448,7 +446,7 @@ char usb_initialize(void)
 {
     // Initialize the debug related globals
     usb_buffer = (u8*)OS_DCACHE_ROUNDUP_ADDR(usb_buffer_align);
-    memset(usb_buffer, 0, BUFFER_SIZE);
+    bzero(usb_buffer, BUFFER_SIZE);
         
     #ifndef LIBDRAGON
         // Create the message queue

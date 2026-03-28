@@ -12,9 +12,6 @@
 #ifndef FALSE
     #define FALSE 0
 #endif
-#ifndef memset
-    extern void *memset(void *, int, unsigned int);
-#endif
 
 
 /*********************************
@@ -77,7 +74,7 @@ void netlib_initialize()
     global_writebuffer[3] = (byte)NETLIB_VERSION;
     for (i=6; i<12; i++)
         global_writebuffer[i] = 0;
-    memset(global_funcptrs, sizeof(global_funcptrs), 1);
+    bzero(global_funcptrs, sizeof(global_funcptrs));
     global_clnumber = 0;
     global_sendafterpoll = FALSE;
     global_disconnected = FALSE;

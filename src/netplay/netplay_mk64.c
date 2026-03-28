@@ -205,7 +205,7 @@ void netplay_update_extended_controllers(void) {
         ctrl = &gNetplayExtControllers[i - 4];
 
         if (gNetplayState.disconnectMask & (1 << i)) {
-            memset(ctrl, 0, sizeof(struct Controller));
+            bzero(ctrl, sizeof(struct Controller));
             continue;
         }
 

@@ -239,7 +239,7 @@ static void netplay_register_callbacks(void) {
 
 void netplay_init(void) {
     s32 i, j;
-    memset(&gNetplayState, 0, sizeof(NetplayState));
+    bzero(&gNetplayState, sizeof(NetplayState));
     gNetplayState.mode = NP_MODE_DISABLED;
     gNetplayState.enabled = FALSE;
     gNetplayState.localPlayer = 0;

@@ -23,8 +23,6 @@
 #define FALSE 0
 #endif
 
-/* memset — not declared in this decomp's libc string.h */
-extern void *memset(void *, int, unsigned int);
 
 /*********************************
        NetLib Packet Types
