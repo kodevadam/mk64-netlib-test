@@ -353,11 +353,12 @@ void read_controllers(void) {
     osRecvMesg(&gSIEventMesgQueue, &msg, OS_MESG_BLOCK);
     osContGetReadData(gControllerPads);
 
+    // Poll netplay for incoming packets (needed even before fully connected
+    // so the N64 can respond to the PC-side bridge's handshake).
+    netplay_update();
+
     // Apply netplay controller overrides before processing.
-    // This remaps local input to the assigned player slot and
-    // fills remote player slots with data from the bridge.
     if (netplay_is_active()) {
-        netplay_update();
         netplay_apply_controller_overrides(gControllerPads);
     }
 
