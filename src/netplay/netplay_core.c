@@ -294,9 +294,13 @@ s32 netplay_detect(void) {
             gNetplayState.ctrlMask = (u8)np_pi_read(NP_REG_CTRL_MASK);
             gNetplayState.inputDelay = (u8)np_pi_read(NP_REG_INPUT_DELAY);
             gNetplayState.rngSeed = np_pi_read(NP_REG_RNG_SEED);
-            gNetplayState.connected = TRUE;
             if (gNetplayState.inputDelay > NP_INPUT_DELAY_MAX) {
                 gNetplayState.inputDelay = NP_INPUT_DELAY_MAX;
+            }
+            // Don't set connected=TRUE with only 1 player — lets game run
+            // normally while the bridge monitors SHM for testing.
+            if (gNetplayState.playerCount > 1) {
+                gNetplayState.connected = TRUE;
             }
             np_pi_write(NP_REG_STATUS, NP_STATUS_N64_READY);
             np_pi_write(NP_REG_ENABLE, 1);
