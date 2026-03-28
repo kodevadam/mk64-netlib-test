@@ -97,7 +97,7 @@
         @param A pointer to function to call when we disconnect
     ==============================*/
     
-    extern void netlib_callback_disconnect(u32 timeout, void (*callback)());
+    extern void netlib_callback_disconnect(u32 timeout, void (*callback)(void));
     
     
     /*==============================
@@ -106,7 +106,7 @@
         @param A pointer to function to call when we reconnect
     ==============================*/
     
-    extern void netlib_callback_reconnect(void (*callback)());
+    extern void netlib_callback_reconnect(void (*callback)(void));
     
     
     /*********************************

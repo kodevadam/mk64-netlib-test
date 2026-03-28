@@ -224,13 +224,13 @@ https://github.com/buu342/N64-UNFLoader
 *********************************/
 
 static void usb_findcart(void);
-static u32  usb_getaddr();
+static u32  usb_getaddr(void);
 
 static s8   usb_64drive_write(int datatype, const void* data, int size);
 static u32  usb_64drive_poll(void);
 static void usb_64drive_read(void);
 static void usb_64drive_set_extendedaddress(u8 enable);
-static u32  usb_64drive_get_baseaddr();
+static u32  usb_64drive_get_baseaddr(void);
 
 static s8   usb_everdrive_write(int datatype, const void* data, int size);
 static u32  usb_everdrive_poll(void);
@@ -580,7 +580,7 @@ char usb_getcart(void)
     @return The base data address
 ==============================*/
 
-u32 usb_getaddr()
+u32 usb_getaddr(void)
 {
     if (usb_cart == CART_64DRIVE && d64_extendedaddr)
         return 0x10000000 - DEBUG_ADDRESS_SIZE;
@@ -763,7 +763,7 @@ void usb_purge(void)
     @return 1 if the USB timed out, 0 if not
 ==============================*/
 
-char usb_timedout()
+char usb_timedout(void)
 {
     return usb_didtimeout;
 }
@@ -857,7 +857,7 @@ static void usb_64drive_set_writable(u32 enable)
     @return The CI base address
 ==============================*/
 
-static u32 usb_64drive_get_baseaddr()
+static u32 usb_64drive_get_baseaddr(void)
 {
     return d64_extendedaddr ? D64_REGS_BASE_EXTENDED : D64_REGS_BASE;
 }
@@ -922,7 +922,7 @@ static void usb_64drive_cui_armcheck(u32 offset, u32 size)
     Disarms the 64Drive's USB
 ==============================*/
 
-static void usb_64drive_cui_disarm()
+static void usb_64drive_cui_disarm(void)
 {
     usb_io_write(D64_REG_USBCOMSTAT, D64_CUI_DISARM);
     while ((usb_io_read(D64_REG_USBCOMSTAT) & D64_CUI_ARM_MASK) != D64_CUI_ARM_IDLE)

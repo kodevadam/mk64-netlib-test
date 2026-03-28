@@ -64,7 +64,7 @@ static void (*global_funcptrs[MAX_UNIQUEPACKETS])(size_t) = {0};
     Also initializes the USB library internally
 ==============================*/
 
-void netlib_initialize()
+void netlib_initialize(void)
 {
     int i;
     usb_initialize();
@@ -114,7 +114,7 @@ ClientNumber netlib_getclient()
     @param A pointer to function to call when we disconnect
 ==============================*/
     
-void netlib_callback_disconnect(u32 timeout, void (*callback)())
+void netlib_callback_disconnect(u32 timeout, void (*callback)(void))
 {
     #ifndef LIBDRAGON
         global_timeouttime = OS_USEC_TO_CYCLES(timeout*1000);
@@ -130,7 +130,7 @@ void netlib_callback_disconnect(u32 timeout, void (*callback)())
     @param A pointer to function to call when we reconnect
 ==============================*/
 
-void netlib_callback_reconnect(void (*callback)())
+void netlib_callback_reconnect(void (*callback)(void))
 {
     global_funcptr_reconnect = callback;
 }
@@ -333,7 +333,7 @@ void netlib_setflags(PacketFlag flags)
     Sends the current net packet to all connected players
 ==============================*/
 
-void netlib_broadcast()
+void netlib_broadcast(void)
 {
     u32 mask = 0xFFFFFFFF  & ~(1 << (global_clnumber-1));
     u16 datasize = global_writecursize - PACKET_HEADERSIZE;
@@ -374,7 +374,7 @@ void netlib_send(ClientNumber client)
     Sends the current net packet to the server
 ==============================*/
 
-void netlib_sendtoserver()
+void netlib_sendtoserver(void)
 {
     u32 mask = 0; // Zero is a server send
     u16 datasize = global_writecursize - PACKET_HEADERSIZE;
@@ -419,7 +419,7 @@ void netlib_register(NetPacket type, void (*callback)(size_t))
     Polls the USB for NetLib packets.
 ==============================*/
 
-void netlib_poll()
+void netlib_poll(void)
 {
     unsigned int header;
     u64 curtime;
