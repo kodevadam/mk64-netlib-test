@@ -20,6 +20,7 @@
 #include <sounds.h>
 #include "spawn_players.h"
 #include "seq_ids.h"
+#include "netplay/netplay.h"
 
 #if ENABLE_DEBUG_MODE
 #define DEBUG_MODE_TOGGLE true
@@ -1836,7 +1837,8 @@ void load_menu_states(s32 menuSelection) {
             if (gPlayerCount <= 0) {
                 gPlayerCount = 1;
             }
-            if (gPlayerCount >= 5) {
+            // Allow 5-8 players in netplay mode. Original game caps at 4.
+            if (!netplay_is_active() && gPlayerCount >= 5) {
                 gPlayerCount = 4;
             }
             gScreenModeListIndex = sScreenModeIdxFromPlayerMode[gPlayerCount - 1];
