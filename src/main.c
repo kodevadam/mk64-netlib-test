@@ -1188,9 +1188,8 @@ void thread5_game_loop(UNUSED void* arg) {
     osCreateMesgQueue(&gGameVblankQueue, &gGameMesgBuf, 1);
     init_controllers();
 
-    // Initialize netplay and detect SC64 bridge connection.
-    // If a bridge is detected, netplay will override controller
-    // inputs to enable networked multiplayer.
+    // Initialize netplay. Tries N64-NetLib first (works on SC64, 64Drive,
+    // EverDrive), then falls back to SC64 shared memory bridge mode.
     netplay_init();
     netplay_detect();
 
