@@ -74,7 +74,7 @@
         Also initializes the USB library internally
     ==============================*/
     
-    extern void netlib_initialize();
+    extern void netlib_initialize(void);
     
     
     /*==============================
@@ -92,7 +92,7 @@
         @return Our client number
     ==============================*/
     
-    extern ClientNumber netlib_getclient();
+    extern ClientNumber netlib_getclient(void);
     
     
     /*==============================
@@ -206,7 +206,7 @@
         Sends the current net packet to all connected players
     ==============================*/
     
-    extern void netlib_broadcast();
+    extern void netlib_broadcast(void);
     
     
     /*==============================
@@ -223,7 +223,7 @@
         Sends the current net packet to the server
     ==============================*/
     
-    extern void netlib_sendtoserver();
+    extern void netlib_sendtoserver(void);
    
     
     /*********************************
@@ -246,7 +246,7 @@
         Polls the USB for NetLib packets.
     ==============================*/
     
-    extern void netlib_poll();
+    extern void netlib_poll(void);
     
     
     /*==============================
