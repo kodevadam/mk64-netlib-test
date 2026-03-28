@@ -9,6 +9,7 @@ https://github.com/buu342/N64-UNFLoader
 #include "usb.h"
 #ifndef LIBDRAGON
     #include <ultra64.h>
+    #include <PR/os.h>
 #else
     #include <libdragon.h>
 #endif
@@ -20,6 +21,9 @@ https://github.com/buu342/N64-UNFLoader
 #ifndef FALSE
     #define FALSE 0
 #endif
+
+/* memset — decomp's libc string.h omits it */
+extern void *memset(void *, int, unsigned int);
 
 
 /*********************************
