@@ -20,20 +20,32 @@
        NetLib Packet Types
 *********************************/
 
-// Client → Server
-#define PKTID_CONNECT        0x00
-#define PKTID_PLAYER_INPUT   0x01
-#define PKTID_READY          0x02
-#define PKTID_GAME_CONFIG    0x03
-#define PKTID_HEARTBEAT_ACK  0x04
+// Client → Server: Connection & Lobby
+#define PKTID_CONNECT        0x00  // [local_count:1] — request to join server
+#define PKTID_LIST_ROOMS     0x05  // [] — request room list
+#define PKTID_CREATE_ROOM    0x06  // [name_len:1][name:var][max_players:1][password_len:1][password:var]
+#define PKTID_JOIN_ROOM      0x07  // [room_id:2][password_len:1][password:var]
+#define PKTID_LEAVE_ROOM     0x08  // []
 
-// Server → Client
-#define PKTID_ASSIGN_PLAYER  0x10
-#define PKTID_REMOTE_INPUT   0x11
-#define PKTID_ALL_READY      0x12
-#define PKTID_SERVER_CONFIG  0x13
-#define PKTID_PLAYER_LEFT    0x14
-#define PKTID_HEARTBEAT      0x15
+// Client → Server: In-Game
+#define PKTID_PLAYER_INPUT   0x01  // [slot:1][frame:4][packed_input:4]
+#define PKTID_READY          0x02  // []
+#define PKTID_GAME_CONFIG    0x03  // [game-specific payload]
+#define PKTID_HEARTBEAT_ACK  0x04  // []
+
+// Server → Client: Connection & Lobby
+#define PKTID_ASSIGN_PLAYER  0x10  // [player_num:1][player_count:1]
+#define PKTID_ROOM_LIST      0x16  // [count:1] then per room: [id:2][name_len:1][name:var][cur:1][max:1][in_game:1]
+#define PKTID_ROOM_JOINED    0x17  // [room_id:2][slot:1][player_count:1][host:1]
+#define PKTID_ROOM_UPDATE    0x18  // [player_count:1][slot_that_changed:1][joined_or_left:1]
+#define PKTID_ROOM_ERROR     0x19  // [error_code:1] (1=full, 2=not found, 3=wrong password, 4=in game)
+
+// Server → Client: In-Game
+#define PKTID_REMOTE_INPUT   0x11  // [player:1][frame:4][packed_input:4]
+#define PKTID_ALL_READY      0x12  // []
+#define PKTID_SERVER_CONFIG  0x13  // [game-specific payload]
+#define PKTID_PLAYER_LEFT    0x14  // [player:1]
+#define PKTID_HEARTBEAT      0x15  // []
 
 /*********************************
          Input Packing
@@ -98,13 +110,41 @@ typedef enum {
     NP_MODE_SC64_SHM      // SC64 shared memory bridge (fallback)
 } NetplayMode;
 
+// Lobby room info (received from server)
+#define NP_MAX_ROOMS        16
+#define NP_ROOM_NAME_MAX    20
+
+typedef struct {
+    u16 id;
+    char name[NP_ROOM_NAME_MAX];
+    u8 currentPlayers;
+    u8 maxPlayers;
+    u8 inGame;             // 1 if room is mid-game
+} NetplayRoom;
+
+typedef enum {
+    NP_LOBBY_DISCONNECTED = 0,
+    NP_LOBBY_CONNECTED,    // Connected to server, not in a room
+    NP_LOBBY_IN_ROOM,      // In a room, waiting for game start
+    NP_LOBBY_IN_GAME       // Game is active
+} NetplayLobbyState;
+
 typedef struct {
     NetplayMode mode;
-    u8 localPlayer;       // First local player's network slot (0-7)
-    u8 localPlayerCount;  // Physical controllers on this console (1-4)
+    // Lobby state
+    NetplayLobbyState lobbyState;
+    u8 isHost;             // 1 if we created the room
+    u16 roomId;            // Current room ID (0 = not in a room)
+    NetplayRoom rooms[NP_MAX_ROOMS]; // Cached room list
+    u8 roomCount;          // Number of rooms in list
+    u8 roomListReceived;   // Server sent room list
+    u8 roomJoinError;      // Non-zero = error code from server
+    // Player state
+    u8 localPlayer;        // First local player's network slot (0-7)
+    u8 localPlayerCount;   // Physical controllers on this console (1-4)
     u8 localSlots[NP_MAX_LOCAL]; // Network slot per local controller
-    u8 playerCount;       // Total players in session (1-8)
-    u8 ctrlMask;          // Bitmask of remote-controlled slots
+    u8 playerCount;        // Total players in session (1-8)
+    u8 ctrlMask;           // Bitmask of remote-controlled slots
     u8 enabled;
     u8 inRace;
     u8 allReady;
@@ -143,6 +183,16 @@ s32  netplay_is_local_player(s32 playerIndex);
 u8   netplay_get_local_player(void);
 u8   netplay_get_player_count(void);
 u32  netplay_get_rng_seed(void);
+
+// Lobby API (game-agnostic)
+void netplay_request_room_list(void);
+void netplay_create_room(const char *name, u8 maxPlayers);
+void netplay_join_room(u16 roomId);
+void netplay_leave_room(void);
+s32  netplay_is_host(void);
+u8   netplay_get_lobby_state(void);
+u8   netplay_get_room_count(void);
+NetplayRoom* netplay_get_room(u8 index);
 
 // SC64 PI bus helpers (used by game-specific code for SHM fallback)
 u32  np_pi_read(u32 offset);

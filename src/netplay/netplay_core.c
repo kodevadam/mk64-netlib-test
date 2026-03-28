@@ -59,6 +59,9 @@ static void pkt_assign_player(size_t size) {
     gNetplayState.localPlayer = playerNum;
     gNetplayState.playerCount = playerCount;
     gNetplayState.connected = TRUE;
+    if (gNetplayState.lobbyState < NP_LOBBY_CONNECTED) {
+        gNetplayState.lobbyState = NP_LOBBY_CONNECTED;
+    }
 
     netlib_setclient(playerNum + 1);
 
@@ -114,7 +117,114 @@ static void pkt_heartbeat(size_t size) {
     netlib_sendtoserver();
 }
 
+/*********************************
+     Lobby Packet Callbacks
+*********************************/
+
+/**
+ * Server sends list of available rooms.
+ * Payload: [count:1] then per room: [id:2][name_len:1][name:var][cur:1][max:1][in_game:1]
+ */
+static void pkt_room_list(size_t size) {
+    uint8_t count, nameLen, cur, max, inGame;
+    uint16_t id;
+    s32 i;
+    (void)size;
+
+    netlib_readbyte(&count);
+    if (count > NP_MAX_ROOMS) count = NP_MAX_ROOMS;
+    gNetplayState.roomCount = count;
+
+    for (i = 0; i < count; i++) {
+        netlib_readword(&id);
+        netlib_readbyte(&nameLen);
+        if (nameLen > NP_ROOM_NAME_MAX - 1) nameLen = NP_ROOM_NAME_MAX - 1;
+        netlib_readbytes((byte *)gNetplayState.rooms[i].name, nameLen);
+        gNetplayState.rooms[i].name[nameLen] = '\0';
+        netlib_readbyte(&cur);
+        netlib_readbyte(&max);
+        netlib_readbyte(&inGame);
+        gNetplayState.rooms[i].id = id;
+        gNetplayState.rooms[i].currentPlayers = cur;
+        gNetplayState.rooms[i].maxPlayers = max;
+        gNetplayState.rooms[i].inGame = inGame;
+    }
+    gNetplayState.roomListReceived = TRUE;
+}
+
+/**
+ * Server confirms we joined a room.
+ * Payload: [room_id:2][slot:1][player_count:1][host:1]
+ */
+static void pkt_room_joined(size_t size) {
+    uint16_t roomId;
+    uint8_t slot, playerCount, host;
+    (void)size;
+
+    netlib_readword(&roomId);
+    netlib_readbyte(&slot);
+    netlib_readbyte(&playerCount);
+    netlib_readbyte(&host);
+
+    gNetplayState.roomId = roomId;
+    gNetplayState.localPlayer = slot;
+    gNetplayState.playerCount = playerCount;
+    gNetplayState.isHost = host;
+    gNetplayState.lobbyState = NP_LOBBY_IN_ROOM;
+    gNetplayState.roomJoinError = 0;
+
+    netlib_setclient(slot + 1);
+}
+
+/**
+ * Room state updated (player joined or left).
+ * Payload: [player_count:1][slot:1][joined_or_left:1]
+ */
+static void pkt_room_update(size_t size) {
+    uint8_t playerCount, slot, action;
+    s32 i;
+    u8 localMask;
+    (void)size;
+
+    netlib_readbyte(&playerCount);
+    netlib_readbyte(&slot);
+    netlib_readbyte(&action);
+
+    gNetplayState.playerCount = playerCount;
+
+    if (action == 0) {
+        // Player left — mark disconnected
+        if (slot < NP_MAX_PLAYERS) {
+            gNetplayState.disconnectMask |= (1 << slot);
+        }
+    }
+
+    // Rebuild control mask
+    localMask = 0;
+    for (i = 0; i < gNetplayState.localPlayerCount; i++) {
+        localMask |= (1 << gNetplayState.localSlots[i]);
+    }
+    gNetplayState.ctrlMask = (u8)((1 << playerCount) - 1) & ~localMask;
+}
+
+/**
+ * Room operation error.
+ * Payload: [error_code:1]
+ */
+static void pkt_room_error(size_t size) {
+    uint8_t code;
+    (void)size;
+    netlib_readbyte(&code);
+    gNetplayState.roomJoinError = code;
+}
+
 static void netplay_register_callbacks(void) {
+    // Lobby
+    netlib_register(PKTID_ROOM_LIST,     pkt_room_list);
+    netlib_register(PKTID_ROOM_JOINED,   pkt_room_joined);
+    netlib_register(PKTID_ROOM_UPDATE,   pkt_room_update);
+    netlib_register(PKTID_ROOM_ERROR,    pkt_room_error);
+    // In-game
     netlib_register(PKTID_ASSIGN_PLAYER, pkt_assign_player);
     netlib_register(PKTID_REMOTE_INPUT,  pkt_remote_input);
     netlib_register(PKTID_ALL_READY,     pkt_all_ready);
@@ -421,6 +531,67 @@ void netplay_handle_disconnects(void) {
 s32 netplay_should_allow_pause(s32 controllerIndex) {
     if (!gNetplayState.enabled) return TRUE;
     return (np_local_index_for_slot(controllerIndex) >= 0);
+}
+
+/*********************************
+          Lobby API
+*********************************/
+
+void netplay_request_room_list(void) {
+    if (gNetplayState.mode != NP_MODE_NETLIB) return;
+    gNetplayState.roomListReceived = FALSE;
+    netlib_start(PKTID_LIST_ROOMS);
+    netlib_sendtoserver();
+}
+
+void netplay_create_room(const char *name, u8 maxPlayers) {
+    u8 nameLen;
+    if (gNetplayState.mode != NP_MODE_NETLIB) return;
+
+    nameLen = 0;
+    while (name[nameLen] != '\0' && nameLen < NP_ROOM_NAME_MAX - 1) nameLen++;
+
+    netlib_start(PKTID_CREATE_ROOM);
+    netlib_writebyte(nameLen);
+    netlib_writebytes((byte *)name, nameLen);
+    netlib_writebyte(maxPlayers);
+    netlib_writebyte(0); // no password
+    netlib_sendtoserver();
+}
+
+void netplay_join_room(u16 roomId) {
+    if (gNetplayState.mode != NP_MODE_NETLIB) return;
+    gNetplayState.roomJoinError = 0;
+    netlib_start(PKTID_JOIN_ROOM);
+    netlib_writeword(roomId);
+    netlib_writebyte(0); // no password
+    netlib_sendtoserver();
+}
+
+void netplay_leave_room(void) {
+    if (gNetplayState.mode != NP_MODE_NETLIB) return;
+    netlib_start(PKTID_LEAVE_ROOM);
+    netlib_sendtoserver();
+    gNetplayState.lobbyState = NP_LOBBY_CONNECTED;
+    gNetplayState.roomId = 0;
+    gNetplayState.isHost = FALSE;
+}
+
+s32 netplay_is_host(void) {
+    return gNetplayState.isHost;
+}
+
+u8 netplay_get_lobby_state(void) {
+    return (u8)gNetplayState.lobbyState;
+}
+
+u8 netplay_get_room_count(void) {
+    return gNetplayState.roomCount;
+}
+
+NetplayRoom* netplay_get_room(u8 index) {
+    if (index >= gNetplayState.roomCount) return NULL;
+    return &gNetplayState.rooms[index];
 }
 
 /*********************************
