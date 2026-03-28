@@ -1,6 +1,19 @@
+#ifndef LIBDRAGON
+    #include <ultra64.h>
+#endif
 #include <string.h>
 #include "netlib.h"
 #include "usb.h"
+
+#ifndef TRUE
+    #define TRUE  1
+#endif
+#ifndef FALSE
+    #define FALSE 0
+#endif
+#ifndef memset
+    extern void *memset(void *, int, unsigned int);
+#endif
 
 
 /*********************************
