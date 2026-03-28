@@ -1,5 +1,6 @@
 #ifndef LIBDRAGON
     #include <ultra64.h>
+    #include <PR/os.h>
 #endif
 #include <string.h>
 #include "netlib.h"
