@@ -52,7 +52,7 @@ https://github.com/buu342/N64-UNFLoader
     #define MIN(a, b) ((a) < (b) ? (a) : (b))
 #endif
 #ifndef ALIGN
-    #define ALIGN(value, align) (((value) + ((typeof(value))(align) - 1)) & ~((typeof(value))(align) - 1))
+    #define ALIGN(value, align) (((value) + ((align) - 1)) & ~((align) - 1))
 #endif
 
 #ifdef LIBDRAGON
