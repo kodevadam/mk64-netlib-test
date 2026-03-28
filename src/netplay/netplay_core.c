@@ -275,14 +275,26 @@ s32 netplay_detect(void) {
     // Try N64-NetLib first (works on SC64, 64Drive, EverDrive)
     netlib_initialize();
     if (usb_getcart() != CART_NONE) {
+        s32 pollCount;
+
         gNetplayState.mode = NP_MODE_NETLIB;
         gNetplayState.enabled = TRUE;
 
         netplay_register_callbacks();
 
-        // Don't try to connect here — USB write blocks if no
-        // PC-side server/UNFLoader is running. Connection will
-        // be attempted in netplay_auto_matchmake() instead.
+        // Try to connect — USB write will timeout (~100ms) if no
+        // PC-side bridge is running, so this won't block forever.
+        netlib_start(PKTID_CONNECT);
+        netlib_sendtoserver();
+
+        for (pollCount = 0; pollCount < 30; pollCount++) {
+            netlib_poll();
+            if (gNetplayState.connected) {
+                return TRUE;
+            }
+        }
+        // Cart detected but no server — game continues normally.
+        // netplay_is_active() returns FALSE since connected is not set.
         return TRUE;
     }
 
