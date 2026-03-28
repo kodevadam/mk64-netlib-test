@@ -51,7 +51,7 @@ void np_pi_write(u32 offset, u32 value) {
 *********************************/
 
 static void pkt_assign_player(size_t size) {
-    uint8_t playerNum, playerCount;
+    u8 playerNum, playerCount;
     s32 i;
     u8 localMask;
     (void)size;
@@ -80,8 +80,8 @@ static void pkt_assign_player(size_t size) {
 }
 
 static void pkt_remote_input(size_t size) {
-    uint8_t player;
-    uint32_t frame, input;
+    u8 player;
+    u32 frame, input;
     (void)size;
 
     netlib_readbyte(&player);
@@ -105,7 +105,7 @@ static void pkt_server_config(size_t size) {
 }
 
 static void pkt_player_left(size_t size) {
-    uint8_t player;
+    u8 player;
     (void)size;
 
     netlib_readbyte(&player);
@@ -129,8 +129,8 @@ static void pkt_heartbeat(size_t size) {
  * Payload: [count:1] then per room: [id:2][name_len:1][name:var][cur:1][max:1][in_game:1]
  */
 static void pkt_room_list(size_t size) {
-    uint8_t count, nameLen, cur, max, inGame;
-    uint16_t id;
+    u8 count, nameLen, cur, max, inGame;
+    u16 id;
     s32 i;
     (void)size;
 
@@ -160,8 +160,8 @@ static void pkt_room_list(size_t size) {
  * Payload: [room_id:2][slot:1][player_count:1][host:1]
  */
 static void pkt_room_joined(size_t size) {
-    uint16_t roomId;
-    uint8_t slot, playerCount, host;
+    u16 roomId;
+    u8 slot, playerCount, host;
     (void)size;
 
     netlib_readword(&roomId);
@@ -184,7 +184,7 @@ static void pkt_room_joined(size_t size) {
  * Payload: [player_count:1][slot:1][joined_or_left:1]
  */
 static void pkt_room_update(size_t size) {
-    uint8_t playerCount, slot, action;
+    u8 playerCount, slot, action;
     s32 i;
     u8 localMask;
     (void)size;
@@ -215,7 +215,7 @@ static void pkt_room_update(size_t size) {
  * Payload: [error_code:1]
  */
 static void pkt_room_error(size_t size) {
-    uint8_t code;
+    u8 code;
     (void)size;
     netlib_readbyte(&code);
     gNetplayState.roomJoinError = code;
@@ -380,7 +380,7 @@ void netplay_apply_controller_overrides(OSContPad *pads) {
 
         if (gNetplayState.mode == NP_MODE_NETLIB) {
             netlib_start(PKTID_PLAYER_INPUT);
-            netlib_writebyte((uint8_t)gNetplayState.localSlots[i]);
+            netlib_writebyte((u8)gNetplayState.localSlots[i]);
             netlib_writedword(gNetplayState.frameCounter);
             netlib_writedword(packed);
             netlib_broadcast();
@@ -486,7 +486,7 @@ void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y) {
 
     if (gNetplayState.mode == NP_MODE_NETLIB) {
         netlib_start(PKTID_PLAYER_INPUT);
-        netlib_writebyte((uint8_t)gNetplayState.localPlayer);
+        netlib_writebyte((u8)gNetplayState.localPlayer);
         netlib_writedword(gNetplayState.frameCounter);
         netlib_writedword(packed);
         netlib_broadcast();
