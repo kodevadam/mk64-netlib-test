@@ -10,6 +10,7 @@ https://github.com/buu342/N64-UNFLoader
 #ifndef LIBDRAGON
     #include <ultra64.h>
     #include <PR/os.h>
+    #include <PR/rcp.h>
 #else
     #include <libdragon.h>
 #endif
