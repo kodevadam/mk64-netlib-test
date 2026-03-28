@@ -129,7 +129,7 @@
         @param The byte to append to the packet
     ==============================*/
     
-    extern void netlib_writebyte(uint8_t data);
+    extern void netlib_writebyte(u8 data);
     
     
     /*==============================
@@ -138,7 +138,7 @@
         @param The word to append to the packet
     ==============================*/
     
-    extern void netlib_writeword(uint16_t data);
+    extern void netlib_writeword(u16 data);
     
     
     /*==============================
@@ -147,7 +147,7 @@
         @param The double word to append to the packet
     ==============================*/
     
-    extern void netlib_writedword(uint32_t data);
+    extern void netlib_writedword(u32 data);
     
     
     /*==============================
@@ -156,7 +156,7 @@
         @param The quad word to append to the packet
     ==============================*/
     
-    extern void netlib_writeqword(uint64_t data);
+    extern void netlib_writeqword(u64 data);
     
     
     /*==============================
@@ -250,7 +250,7 @@
         @param A pointer to the byte to read into
     ==============================*/
     
-    extern void netlib_readbyte(uint8_t* output);
+    extern void netlib_readbyte(u8* output);
     
     
     /*==============================
@@ -259,7 +259,7 @@
         @param A pointer to the word to read into
     ==============================*/
     
-    extern void netlib_readword(uint16_t* output);
+    extern void netlib_readword(u16* output);
     
     
     /*==============================
@@ -268,7 +268,7 @@
         @param A pointer to the double word to read into
     ==============================*/
     
-    extern void netlib_readdword(uint32_t* output);
+    extern void netlib_readdword(u32* output);
     
     
     /*==============================
@@ -277,7 +277,7 @@
         @param A pointer to the quad word to read into
     ==============================*/
     
-    extern void netlib_readqword(uint64_t* output);
+    extern void netlib_readqword(u64* output);
     
     
     /*==============================

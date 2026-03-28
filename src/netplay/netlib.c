@@ -161,10 +161,10 @@ void netlib_start(NetPacket type)
     @param The byte to append to the packet
 ==============================*/
 
-void netlib_writebyte(uint8_t data)
+void netlib_writebyte(u8 data)
 {
     #if SAFETYCHECKS
-        if (global_writecursize + sizeof(uint8_t) > MAX_PACKETSIZE)
+        if (global_writecursize + sizeof(u8) > MAX_PACKETSIZE)
         {
             usb_write(DATATYPE_TEXT, "Warning: Writing more data than max packet size. Discarded!\n", 61);
             return;
@@ -182,10 +182,10 @@ void netlib_writebyte(uint8_t data)
     @param The word to append to the packet
 ==============================*/
 
-void netlib_writeword(uint16_t data)
+void netlib_writeword(u16 data)
 {
     #if SAFETYCHECKS
-        if (global_writecursize + sizeof(uint16_t) > MAX_PACKETSIZE)
+        if (global_writecursize + sizeof(u16) > MAX_PACKETSIZE)
         {
             usb_write(DATATYPE_TEXT, "Warning: Writing more data than max packet size. Discarded!\n", 61);
             return;
@@ -204,10 +204,10 @@ void netlib_writeword(uint16_t data)
     @param The double word to append to the packet
 ==============================*/
 
-void netlib_writedword(uint32_t data)
+void netlib_writedword(u32 data)
 {
     #if SAFETYCHECKS
-        if (global_writecursize + sizeof(uint32_t) > MAX_PACKETSIZE)
+        if (global_writecursize + sizeof(u32) > MAX_PACKETSIZE)
         {
             usb_write(DATATYPE_TEXT, "Warning: Writing more data than max packet size. Discarded!\n", 61);
             return;
@@ -228,10 +228,10 @@ void netlib_writedword(uint32_t data)
     @param The quad word to append to the packet
 ==============================*/
 
-void netlib_writeqword(uint64_t data)
+void netlib_writeqword(u64 data)
 {
     #if SAFETYCHECKS
-        if (global_writecursize + sizeof(uint64_t) > MAX_PACKETSIZE)
+        if (global_writecursize + sizeof(u64) > MAX_PACKETSIZE)
         {
             usb_write(DATATYPE_TEXT, "Warning: Writing more data than max packet size. Discarded!\n", 61);
             return;
@@ -450,10 +450,10 @@ void netlib_poll()
     {
         if (header == DATATYPE_NETPACKET)
         {
-            uint8_t version, flags;
+            u8 version, flags;
             NetPacket type;
-            uint32_t recipients;
-            uint16_t size;
+            u32 recipients;
+            u16 size;
             
             // Read the version packet
             #if SAFETYCHECKS
@@ -515,9 +515,9 @@ void netlib_poll()
     @param A pointer to the byte to read into
 ==============================*/
 
-void netlib_readbyte(uint8_t* output)
+void netlib_readbyte(u8* output)
 {
-    usb_read(output, sizeof(uint8_t));
+    usb_read(output, sizeof(u8));
 }
 
 
@@ -527,9 +527,9 @@ void netlib_readbyte(uint8_t* output)
     @param A pointer to the word to read into
 ==============================*/
 
-void netlib_readword(uint16_t* output)
+void netlib_readword(u16* output)
 {
-    usb_read(output, sizeof(uint16_t));
+    usb_read(output, sizeof(u16));
 }
 
 
@@ -539,9 +539,9 @@ void netlib_readword(uint16_t* output)
     @param A pointer to the double word to read into
 ==============================*/
 
-void netlib_readdword(uint32_t* output)
+void netlib_readdword(u32* output)
 {
-    usb_read(output, sizeof(uint32_t));
+    usb_read(output, sizeof(u32));
 }
 
 
@@ -551,9 +551,9 @@ void netlib_readdword(uint32_t* output)
     @param A pointer to the quad word to read into
 ==============================*/
 
-void netlib_readqword(uint64_t* output)
+void netlib_readqword(u64* output)
 {
-    usb_read(output, sizeof(uint64_t));
+    usb_read(output, sizeof(u64));
 }
 
 /*==============================

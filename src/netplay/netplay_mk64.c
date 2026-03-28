@@ -37,9 +37,9 @@
  *   [mode:1][course:2][cc:1][char0..char7:8][rng_seed:4][input_delay:1]
  */
 void netplay_game_parse_config(size_t size) {
-    uint8_t mode, cc, delay, ch;
-    uint16_t course;
-    uint32_t seed;
+    u8 mode, cc, delay, ch;
+    u16 course;
+    u32 seed;
     s32 i;
     (void)size;
 
@@ -343,14 +343,14 @@ void netplay_game_send_config(void) {
         gNetplayState.rngSeed = seed;
 
         netlib_start(PKTID_GAME_CONFIG);
-        netlib_writebyte((uint8_t)gModeSelection);
-        netlib_writeword((uint16_t)gCurrentCourseId);
-        netlib_writebyte((uint8_t)gCCSelection);
+        netlib_writebyte((u8)gModeSelection);
+        netlib_writeword((u16)gCurrentCourseId);
+        netlib_writebyte((u8)gCCSelection);
         for (i = 0; i < NP_MAX_PLAYERS; i++) {
-            netlib_writebyte((uint8_t)gCharacterSelections[i]);
+            netlib_writebyte((u8)gCharacterSelections[i]);
         }
         netlib_writedword(seed);
-        netlib_writebyte((uint8_t)gNetplayState.inputDelay);
+        netlib_writebyte((u8)gNetplayState.inputDelay);
         netlib_sendtoserver();
     }
 }
