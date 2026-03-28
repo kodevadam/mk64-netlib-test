@@ -159,6 +159,88 @@ void netplay_game_seed_rng(void) {
  * MK64 config payload:
  *   [mode:1][course:2][cc:1][char0..char7:8][rng_seed:4][input_delay:1]
  */
+/*********************************
+     Camera / Player Remap
+*********************************/
+
+/**
+ * Remap the camera→player pointers so that local viewports follow
+ * the correct network player slots.
+ *
+ * MK64 hardcodes: camera1 → gPlayerOneCopy (gPlayers[0])
+ *                 camera2 → gPlayerTwoCopy (gPlayers[1])
+ *
+ * For netplay, if our local player is slot 3 in 1P mode, we need
+ * camera1 to follow gPlayers[3]. We achieve this by remapping the
+ * gPlayerOneCopy/gPlayerTwoCopy pointers.
+ *
+ * Call this after setup_race()/spawn_players completes.
+ */
+/**
+ * After spawn_players runs, upgrade remote netplay players from CPU to HUMAN.
+ *
+ * MK64 spawns players 5-8 as CPU with hardcoded characters. For 8-player
+ * netplay, we need those slots to be HUMAN-controlled (via network input)
+ * with the correct character selections from the game config.
+ *
+ * This also fixes character assignments for all remote players since
+ * spawn_players may have assigned wrong characters for slots > 4.
+ */
+static void netplay_fixup_remote_players(void) {
+    s32 i;
+    Player *players[NP_MAX_PLAYERS];
+
+    players[0] = gPlayerOne;
+    players[1] = gPlayerTwo;
+    players[2] = gPlayerThree;
+    players[3] = gPlayerFour;
+    players[4] = gPlayerFive;
+    players[5] = gPlayerSix;
+    players[6] = gPlayerSeven;
+    players[7] = gPlayerEight;
+
+    for (i = 0; i < gNetplayState.playerCount && i < NP_MAX_PLAYERS; i++) {
+        if (!(players[i]->type & PLAYER_EXISTS)) {
+            continue;
+        }
+        // If this slot is a network player (local or remote), make it HUMAN
+        if (netplay_is_local_player(i) || (gNetplayState.ctrlMask & (1 << i))) {
+            // Clear CPU flag, set HUMAN flag
+            players[i]->type &= ~PLAYER_CPU;
+            players[i]->type |= PLAYER_HUMAN;
+        }
+    }
+}
+
+void netplay_remap_cameras(void) {
+    s32 i;
+    Player** copyPtrs[2];
+
+    if (!gNetplayState.enabled) {
+        return;
+    }
+
+    // First, upgrade remote netplay players from CPU to HUMAN
+    netplay_fixup_remote_players();
+
+    // Remap camera→player pointers so viewports follow local slots.
+    // gPlayerOneCopy is what camera1 / render_player_one_*() follows.
+    // gPlayerTwoCopy is what camera2 / render_player_two_*() follows.
+    copyPtrs[0] = &gPlayerOneCopy;
+    copyPtrs[1] = &gPlayerTwoCopy;
+
+    for (i = 0; i < gNetplayState.localPlayerCount && i < 2; i++) {
+        u8 slot = gNetplayState.localSlots[i];
+        if (slot < NUM_PLAYERS) {
+            *copyPtrs[i] = &gPlayers[slot];
+        }
+    }
+}
+
+/*********************************
+    Host Config Broadcast
+*********************************/
+
 void netplay_game_send_config(void) {
     s32 i;
     u32 seed;

@@ -16,4 +16,8 @@ void netplay_setup_game(void);
 void netplay_seed_rng(void);
 void netplay_send_game_config(void);
 
+// Remap camera/player pointers so viewports follow local players.
+// Call after setup_race() completes (after spawn_players).
+void netplay_remap_cameras(void);
+
 #endif

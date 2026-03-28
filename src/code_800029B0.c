@@ -243,6 +243,12 @@ void setup_race(void) {
         func_800CB2C4();
     }
 
+    // Remap camera pointers so viewports follow local players' network slots.
+    // Must be after spawn_players/camera_init since those set up default mapping.
+    if (netplay_is_active()) {
+        netplay_remap_cameras();
+    }
+
     controller = gControllerOne;
 
     for (i = 0; i < 7; i++, controller++) {
