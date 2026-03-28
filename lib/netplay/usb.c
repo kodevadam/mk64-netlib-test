@@ -48,24 +48,19 @@ extern void *memset(void *, int, unsigned int);
    Libultra macros for libdragon
 *********************************/
 
+/* Utility macros needed on all platforms */
+#ifndef MIN
+    #define MIN(a, b) ((a) < (b) ? (a) : (b))
+#endif
+#ifndef ALIGN
+    #define ALIGN(value, align) (((value) + ((typeof(value))(align) - 1)) & ~((typeof(value))(align) - 1))
+#endif
+
 #ifdef LIBDRAGON
-    // Useful
-    #ifndef MIN
-        #define MIN(a, b) ((a) < (b) ? (a) : (b))
-    #endif
-    #ifndef ALIGN
-        #define ALIGN(value, align) (((value) + ((typeof(value))(align) - 1)) & ~((typeof(value))(align) - 1))
-    #endif
-    #ifndef TRUE
-        #define TRUE 1
-    #endif
-    #ifndef FALSE
-        #define FALSE 0
-    #endif
     #ifndef NULL
         #define NULL 0
     #endif
-    
+
     // MIPS addresses
     #define KSEG0 0x80000000
     #define KSEG1 0xA0000000
