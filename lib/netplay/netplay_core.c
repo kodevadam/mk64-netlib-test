@@ -602,7 +602,7 @@ NetplayRoom* netplay_get_room(u8 index) {
 *********************************/
 
 s32 netplay_is_active(void) {
-    return gNetplayState.enabled;
+    return gNetplayState.enabled && gNetplayState.connected;
 }
 
 s32 netplay_is_local_player(s32 playerIndex) {
