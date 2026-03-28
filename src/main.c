@@ -1198,7 +1198,7 @@ void thread5_game_loop(UNUSED void* arg) {
     // Initialize netplay. Tries N64-NetLib first (works on SC64, 64Drive,
     // EverDrive), then falls back to SC64 shared memory bridge mode.
     netplay_init();
-    netplay_detect();
+    // netplay_detect(); // Temporarily disabled to test if freeze is netplay-related
 
     // Silent matchmaking — auto create/join a room.
     // Player proceeds through normal menus while netplay manages the room.
