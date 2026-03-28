@@ -47,6 +47,7 @@ void mtxf_transform_vec3f_mat4(Vec3f, Mat4);
 void vec3f_rotate_y(Vec3f, s16);
 void calculate_orientation_matrix(Mat3, f32, f32, f32, s16);
 void calculate_rotation_matrix(Mat3, s16, f32, f32, f32);
+void vec_unit_z_rotX_rotY(s16, s16, Vec3f);
 void func_802B6BC0(Mat4, s16, f32, f32, f32); // Unused
 void func_802B6D58(Mat4, Vec3f, Vec3f);       // Unused
 void mtxf_multiplication(Mat4, Mat4, Mat4);
