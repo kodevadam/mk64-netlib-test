@@ -39,6 +39,7 @@
 #include <debug.h>
 #include "crash_screen.h"
 #include "buffers/gfx_output_buffer.h"
+#include "netplay/netplay.h"
 
 void func_80091B78(void);
 void audio_init(void);
@@ -351,6 +352,15 @@ void read_controllers(void) {
     osContStartReadData(&gSIEventMesgQueue);
     osRecvMesg(&gSIEventMesgQueue, &msg, OS_MESG_BLOCK);
     osContGetReadData(gControllerPads);
+
+    // Apply netplay controller overrides before processing.
+    // This remaps local input to the assigned player slot and
+    // fills remote player slots with data from the bridge.
+    if (netplay_is_active()) {
+        netplay_update();
+        netplay_apply_controller_overrides(gControllerPads);
+    }
+
     update_controller(0);
     update_controller(1);
     update_controller(2);
@@ -1129,6 +1139,11 @@ void func_80002658(void) {
  *
  */
 void update_gamestate(void) {
+    // Track race state for netplay frame sync
+    if (netplay_is_active()) {
+        gNetplayState.inRace = (gGamestate == RACING);
+    }
+
     switch (gGamestate) {
         case START_MENU_FROM_QUIT:
             func_80002658();
@@ -1172,6 +1187,13 @@ void thread5_game_loop(UNUSED void* arg) {
     osCreateMesgQueue(&gGfxVblankQueue, gGfxMesgBuf, 1);
     osCreateMesgQueue(&gGameVblankQueue, &gGameMesgBuf, 1);
     init_controllers();
+
+    // Initialize netplay and detect SC64 bridge connection.
+    // If a bridge is detected, netplay will override controller
+    // inputs to enable networked multiplayer.
+    netplay_init();
+    netplay_detect();
+
     if (!wasSoftReset) {
         clear_nmi_buffer();
     }
@@ -1202,6 +1224,13 @@ void thread5_game_loop(UNUSED void* arg) {
         profiler_log_thread5_time(THREAD5_START);
         config_gfx_pool();
         read_controllers();
+
+        // During racing, wait for remote inputs before advancing game state.
+        // This provides frame-locked input delivery for netplay sync.
+        if (netplay_is_active() && gGamestate == RACING) {
+            netplay_wait_for_remote_inputs();
+        }
+
         game_state_handler();
         end_master_display_list();
         display_and_vsync();
