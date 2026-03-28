@@ -10,6 +10,7 @@ https://github.com/buu342/N64-UNFLoader
 #ifndef LIBDRAGON
     #include <ultra64.h>
     #include <PR/os.h>
+    #include <PR/rcp.h>
 #else
     #include <libdragon.h>
 #endif
@@ -22,8 +23,6 @@ https://github.com/buu342/N64-UNFLoader
     #define FALSE 0
 #endif
 
-/* memset — decomp's libc string.h omits it */
-extern void *memset(void *, int, unsigned int);
 
 
 /*********************************
@@ -275,13 +274,9 @@ static u8 d64_extendedaddr = FALSE;
     
     // osPiRaw
     #if USE_OSRAW
-        extern s32 __osPiRawWriteIo(u32, u32);
-        extern s32 __osPiRawReadIo(u32, u32 *);
-        extern s32 __osPiRawStartDma(s32, u32, void *, u32);
-        
-        #define osPiRawWriteIo(a, b) __osPiRawWriteIo(a, b)
-        #define osPiRawReadIo(a, b) __osPiRawReadIo(a, b)
-        #define osPiRawStartDma(a, b, c, d) __osPiRawStartDma(a, b, c, d)
+        extern s32 osPiRawWriteIo(u32, u32);
+        extern s32 osPiRawReadIo(u32, u32 *);
+        extern s32 osPiRawStartDma(s32, u32, void *, u32);
     #endif
 #endif
 
@@ -298,7 +293,7 @@ static u8 d64_extendedaddr = FALSE;
     @return The 4 byte value that was read
 ==============================*/
 
-static inline u32 usb_io_read(u32 pi_address)
+static u32 usb_io_read(u32 pi_address)
 {
     #ifndef LIBDRAGON
         u32 value;
@@ -322,7 +317,7 @@ static inline u32 usb_io_read(u32 pi_address)
     @param  The 4 byte value to write
 ==============================*/
 
-static inline void usb_io_write(u32 pi_address, u32 value)
+static void usb_io_write(u32 pi_address, u32 value)
 {
     #ifndef LIBDRAGON
         #if USE_OSRAW
@@ -345,7 +340,7 @@ static inline void usb_io_write(u32 pi_address, u32 value)
     @param  The size of the data to read
 ==============================*/
 
-static inline void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
+static void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
 {
     #ifndef LIBDRAGON
         osWritebackDCache(ram_address, size);
@@ -372,7 +367,7 @@ static inline void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
     @param  The size of the data to write
 ==============================*/
 
-static inline void usb_dma_write(void *ram_address, u32 pi_address, size_t size)
+static void usb_dma_write(void *ram_address, u32 pi_address, size_t size)
 {
     #ifndef LIBDRAGON
         osWritebackDCache(ram_address, size);
@@ -448,7 +443,7 @@ char usb_initialize(void)
 {
     // Initialize the debug related globals
     usb_buffer = (u8*)OS_DCACHE_ROUNDUP_ADDR(usb_buffer_align);
-    memset(usb_buffer, 0, BUFFER_SIZE);
+    bzero(usb_buffer, BUFFER_SIZE);
         
     #ifndef LIBDRAGON
         // Create the message queue

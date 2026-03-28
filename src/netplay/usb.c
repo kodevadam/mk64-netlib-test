@@ -293,7 +293,7 @@ static u8 d64_extendedaddr = FALSE;
     @return The 4 byte value that was read
 ==============================*/
 
-static inline u32 usb_io_read(u32 pi_address)
+static u32 usb_io_read(u32 pi_address)
 {
     #ifndef LIBDRAGON
         u32 value;
@@ -317,7 +317,7 @@ static inline u32 usb_io_read(u32 pi_address)
     @param  The 4 byte value to write
 ==============================*/
 
-static inline void usb_io_write(u32 pi_address, u32 value)
+static void usb_io_write(u32 pi_address, u32 value)
 {
     #ifndef LIBDRAGON
         #if USE_OSRAW
@@ -340,7 +340,7 @@ static inline void usb_io_write(u32 pi_address, u32 value)
     @param  The size of the data to read
 ==============================*/
 
-static inline void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
+static void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
 {
     #ifndef LIBDRAGON
         osWritebackDCache(ram_address, size);
@@ -367,7 +367,7 @@ static inline void usb_dma_read(void *ram_address, u32 pi_address, size_t size)
     @param  The size of the data to write
 ==============================*/
 
-static inline void usb_dma_write(void *ram_address, u32 pi_address, size_t size)
+static void usb_dma_write(void *ram_address, u32 pi_address, size_t size)
 {
     #ifndef LIBDRAGON
         osWritebackDCache(ram_address, size);
