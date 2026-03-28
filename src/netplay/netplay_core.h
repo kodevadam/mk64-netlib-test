@@ -74,7 +74,7 @@
 #define NP_MAX_PLAYERS      8   // Max online players
 #define NP_MAX_LOCAL        4   // Max physical controllers per console
 #define NP_INPUT_DELAY_MAX  8   // Max frames of input delay
-#define NP_FRAME_SYNC_TIMEOUT 3 // Poll iterations before timeout
+#define NP_FRAME_SYNC_TIMEOUT 50000 // Poll iterations to wait for bridge response
 
 /*********************************
      SC64 Shared Memory Mode

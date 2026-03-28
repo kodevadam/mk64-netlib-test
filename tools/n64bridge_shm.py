@@ -194,7 +194,7 @@ class Bridge:
         self.sc64.shm_write(REG_RNG_SEED, seed)
         self.sc64.shm_write(REG_STATUS, 0)
         self.sc64.shm_write(REG_DISCONNECT, 0)
-        self.sc64.shm_write(REG_RACE_START, 0)
+        self.sc64.shm_write(REG_RACE_START, 1)  # Pre-signal race start for testing
         self.sc64.shm_write(REG_FRAME_RDY, 0)
 
         # Zero override and local input registers
@@ -236,7 +236,7 @@ class Bridge:
 
                 errors = 0
 
-                if frame != self.prev_frame:
+                if frame != self.prev_frame and frame is not None:
                     self.prev_frame = frame
                     self._on_frame(frame)
                     polls += 1
@@ -247,7 +247,10 @@ class Bridge:
                         ready = "ready" if (status & STATUS_N64_READY) else "init"
                         print(f"  [frame {frame}] {state} | {ready}")
                 else:
-                    # Drain UDP even between frames
+                    # Echo frame_rdy even if frame hasn't changed
+                    # so the N64 doesn't get stuck waiting
+                    if self.prev_frame > 0:
+                        self.sc64.shm_write(REG_FRAME_RDY, self.prev_frame)
                     self._recv_remote()
                     time.sleep(0.001)
 
