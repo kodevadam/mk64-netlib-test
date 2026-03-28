@@ -23,6 +23,7 @@
 #include "courses/all_course_packed.h"
 #include "menus.h"
 #include "data/other_textures.h"
+#include "netplay/netplay.h"
 
 extern s32 gDemoTimer;
 extern s16 D_802BA048;
@@ -176,6 +177,14 @@ void func_800029B0(void) {
 void setup_race(void) {
     struct Controller* controller;
     int i;
+
+    // When netplay is active, override game setup with bridge config
+    // before the race initializes. This sets player count, characters,
+    // course, mode, and seeds the RNG for deterministic sync.
+    if (netplay_is_active()) {
+        netplay_setup_game();
+        netplay_seed_rng();
+    }
 
     gPlayerCountSelection1 = gPlayerCount;
     if (gGamestate != RACING) {

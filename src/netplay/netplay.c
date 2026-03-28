@@ -1,9 +1,13 @@
 #include <ultra64.h>
 #include <PR/os.h>
 #include <string.h>
+#include <defines.h>
+#include <course.h>
 
 #include "netplay.h"
 #include "main.h"
+#include "menus.h"
+#include "buffers/random.h"
 
 /*********************************
             Globals
@@ -13,7 +17,6 @@ NetplayState gNetplayState;
 
 /*********************************
      SC64 PI Bus Access
-  (Uncached memory-mapped I/O)
 *********************************/
 
 static u32 np_pi_read(u32 offset) {
@@ -31,6 +34,7 @@ static void np_pi_write(u32 offset, u32 value) {
 *********************************/
 
 void netplay_init(void) {
+    s32 i;
     memset(&gNetplayState, 0, sizeof(NetplayState));
     gNetplayState.mode = NP_MODE_DISABLED;
     gNetplayState.enabled = FALSE;
@@ -40,7 +44,13 @@ void netplay_init(void) {
     gNetplayState.frameCounter = 0;
     gNetplayState.rngSeed = 0;
     gNetplayState.inputDelay = 0;
+    gNetplayState.inputDelayHead = 0;
+    gNetplayState.disconnectMask = 0;
+    gNetplayState.raceStartSync = NP_RACE_NOT_STARTED;
     gNetplayState.inRace = FALSE;
+    for (i = 0; i < NP_INPUT_DELAY_MAX; i++) {
+        gNetplayState.inputDelayBuffer[i] = 0;
+    }
 }
 
 /**
@@ -53,7 +63,6 @@ s32 netplay_detect(void) {
     magic = np_pi_read(NP_REG_MAGIC);
 
     if (magic == NP_MAGIC) {
-        // Bridge is connected and ready
         gNetplayState.mode = NP_MODE_SC64_SHM;
         gNetplayState.enabled = TRUE;
 
@@ -63,6 +72,11 @@ s32 netplay_detect(void) {
         gNetplayState.ctrlMask = (u8)np_pi_read(NP_REG_CTRL_MASK);
         gNetplayState.inputDelay = (u8)np_pi_read(NP_REG_INPUT_DELAY);
         gNetplayState.rngSeed = np_pi_read(NP_REG_RNG_SEED);
+
+        // Clamp input delay
+        if (gNetplayState.inputDelay > NP_INPUT_DELAY_MAX) {
+            gNetplayState.inputDelay = NP_INPUT_DELAY_MAX;
+        }
 
         // Signal to bridge that N64 is ready
         np_pi_write(NP_REG_STATUS, NP_STATUS_N64_READY);
@@ -80,10 +94,6 @@ s32 netplay_detect(void) {
        Per-Frame Update
 *********************************/
 
-/**
- * Called once per game frame before controller processing.
- * Reads the latest remote controller data from SC64 shared memory.
- */
 void netplay_update(void) {
     s32 i;
 
@@ -91,19 +101,24 @@ void netplay_update(void) {
         return;
     }
 
-    // Update frame counter
     gNetplayState.frameCounter++;
     np_pi_write(NP_REG_FRAME, gNetplayState.frameCounter);
 
-    // Read remote controller overrides from shared memory
+    // Read remote controller overrides
     for (i = 0; i < NP_MAX_PLAYERS; i++) {
         if (i != gNetplayState.localPlayer && (gNetplayState.ctrlMask & (1 << i))) {
             gNetplayState.remoteInputs[i] = np_pi_read(NP_REG_OVERRIDE_0 + (i * 4));
         }
     }
 
-    // Re-read control mask in case bridge updated it
+    // Re-read dynamic state from bridge
     gNetplayState.ctrlMask = (u8)np_pi_read(NP_REG_CTRL_MASK);
+    gNetplayState.disconnectMask = (u8)np_pi_read(NP_REG_DISCONNECT);
+
+    // Update race status to bridge
+    if (gNetplayState.inRace) {
+        np_pi_write(NP_REG_STATUS, NP_STATUS_N64_READY | NP_STATUS_IN_RACE);
+    }
 }
 
 /*********************************
@@ -112,16 +127,15 @@ void netplay_update(void) {
 
 /**
  * Apply netplay controller overrides to the raw OSContPad data.
- * Called from read_controllers() after osContGetReadData().
- *
- * The local player's physical controller (always port 0 on the N64)
- * gets mapped to their assigned player slot. Remote player data
- * from the bridge fills the other slots.
+ * The local player's physical controller (always port 0) gets mapped
+ * to their assigned player slot. Remote/disconnected slots are filled
+ * from shared memory or with neutral inputs.
  */
 void netplay_apply_controller_overrides(OSContPad *pads) {
     OSContPad localPad;
     s32 i;
     u32 packed;
+    u32 delayedInput;
 
     if (!gNetplayState.enabled) {
         return;
@@ -130,16 +144,36 @@ void netplay_apply_controller_overrides(OSContPad *pads) {
     // Save local player's physical input (always from port 0)
     localPad = pads[0];
 
-    // Send local input to bridge via shared memory
+    // Pack and send local input to bridge
     netplay_send_local_input(localPad.button, localPad.stick_x, localPad.stick_y);
+
+    // If input delay is active, buffer the local input
+    packed = NP_PACK_INPUT(localPad.button, localPad.stick_x, localPad.stick_y);
+    if (gNetplayState.inputDelay > 0) {
+        // Write current input to ring buffer
+        gNetplayState.inputDelayBuffer[gNetplayState.inputDelayHead] = packed;
+        gNetplayState.inputDelayHead = (gNetplayState.inputDelayHead + 1) % NP_INPUT_DELAY_MAX;
+
+        // Read delayed input from buffer
+        i = (gNetplayState.inputDelayHead + NP_INPUT_DELAY_MAX - gNetplayState.inputDelay) % NP_INPUT_DELAY_MAX;
+        delayedInput = gNetplayState.inputDelayBuffer[i];
+    } else {
+        delayedInput = packed;
+    }
 
     // Fill all player slots
     for (i = 0; i < NP_MAX_PLAYERS; i++) {
         if (i == gNetplayState.localPlayer) {
-            // This is our slot - use physical controller input
-            pads[i].button = localPad.button;
-            pads[i].stick_x = localPad.stick_x;
-            pads[i].stick_y = localPad.stick_y;
+            // This is our slot - use (possibly delayed) physical controller input
+            pads[i].button = NP_UNPACK_BUTTONS(delayedInput);
+            pads[i].stick_x = NP_UNPACK_STICK_X(delayedInput);
+            pads[i].stick_y = NP_UNPACK_STICK_Y(delayedInput);
+            pads[i].errno = 0;
+        } else if (gNetplayState.disconnectMask & (1 << i)) {
+            // Disconnected player - neutral input
+            pads[i].button = 0;
+            pads[i].stick_x = 0;
+            pads[i].stick_y = 0;
             pads[i].errno = 0;
         } else if (gNetplayState.ctrlMask & (1 << i)) {
             // Remote player - unpack override data
@@ -162,14 +196,6 @@ void netplay_apply_controller_overrides(OSContPad *pads) {
         Frame Sync
 *********************************/
 
-/**
- * Wait for the bridge to confirm that remote input data is available
- * for the current frame. Returns 1 if data is ready, 0 if timed out.
- *
- * This implements frame-locked input delivery: the game will not
- * advance past frame N until the bridge has written remote inputs
- * for frame N.
- */
 s32 netplay_wait_for_remote_inputs(void) {
     s32 timeout;
     u32 bridgeFrame;
@@ -183,8 +209,6 @@ s32 netplay_wait_for_remote_inputs(void) {
         if (bridgeFrame >= gNetplayState.frameCounter) {
             return TRUE;
         }
-        // Brief wait before checking again
-        // Each iteration is roughly one PI bus access cycle
     }
 
     // Timed out - use last known inputs (don't freeze the game)
@@ -195,10 +219,6 @@ s32 netplay_wait_for_remote_inputs(void) {
        Local Input Send
 *********************************/
 
-/**
- * Write local controller input to SC64 shared memory so the bridge
- * can read it and send to the gopher64 server.
- */
 void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y) {
     u32 packed;
     u32 offset;
@@ -213,6 +233,146 @@ void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y) {
 }
 
 /*********************************
+      Game Setup from Bridge
+*********************************/
+
+/**
+ * Force game configuration from bridge settings.
+ * Sets player count, screen mode, game mode, character selections,
+ * course, and CC. Call this before entering race state to override
+ * menu selections with network-coordinated values.
+ */
+void netplay_setup_game(void) {
+    s32 i;
+    u32 charId;
+
+    if (!gNetplayState.enabled) {
+        return;
+    }
+
+    // Force player count
+    gPlayerCount = gNetplayState.playerCount;
+    gPlayerCountSelection1 = gNetplayState.playerCount;
+
+    // Set screen mode based on player count
+    switch (gNetplayState.playerCount) {
+        case 1:
+            gScreenModeSelection = SCREEN_MODE_1P;
+            break;
+        case 2:
+            gScreenModeSelection = SCREEN_MODE_2P_SPLITSCREEN_HORIZONTAL;
+            break;
+        case 3:
+        case 4:
+            gScreenModeSelection = SCREEN_MODE_3P_4P_SPLITSCREEN;
+            break;
+    }
+    gActiveScreenMode = gScreenModeSelection;
+
+    // Set game mode from bridge (default to VERSUS for netplay)
+    gModeSelection = (s32)np_pi_read(NP_REG_GAME_MODE);
+    if (gModeSelection < GRAND_PRIX || gModeSelection > BATTLE) {
+        gModeSelection = VERSUS;
+    }
+
+    // Set CC selection
+    gCCSelection = (s32)np_pi_read(NP_REG_CC_SELECT);
+    if (gCCSelection < CC_50 || gCCSelection > CC_150) {
+        gCCSelection = CC_100;
+    }
+
+    // Set character selections from bridge
+    for (i = 0; i < NP_MAX_PLAYERS; i++) {
+        charId = np_pi_read(NP_REG_CHAR_SEL_0 + (i * 4));
+        if (charId <= BOWSER) {
+            gCharacterSelections[i] = (s8)charId;
+        }
+    }
+
+    // Set course from bridge
+    gCurrentCourseId = (s16)np_pi_read(NP_REG_COURSE_ID);
+
+    // Signal menu ready to bridge
+    np_pi_write(NP_REG_STATUS, NP_STATUS_N64_READY | NP_STATUS_MENU_READY);
+}
+
+/*********************************
+      Race Start Sync
+*********************************/
+
+/**
+ * Wait for bridge to signal that all players are ready to start.
+ * Returns 1 when ready, 0 if still waiting.
+ */
+s32 netplay_wait_for_race_start(void) {
+    u32 raceState;
+
+    if (!gNetplayState.enabled) {
+        return TRUE;
+    }
+
+    raceState = np_pi_read(NP_REG_RACE_START);
+    gNetplayState.raceStartSync = (u8)raceState;
+
+    if (raceState >= NP_RACE_ALL_READY) {
+        return TRUE;
+    }
+
+    // Signal that this N64 is ready to start
+    np_pi_write(NP_REG_RACE_START, NP_RACE_ALL_READY);
+    return FALSE;
+}
+
+/*********************************
+     Disconnect Handling
+*********************************/
+
+/**
+ * Check for disconnected players. The bridge writes a bitmask
+ * to NP_REG_DISCONNECT when a player drops.
+ */
+void netplay_handle_disconnects(void) {
+    if (!gNetplayState.enabled) {
+        return;
+    }
+    gNetplayState.disconnectMask = (u8)np_pi_read(NP_REG_DISCONNECT);
+}
+
+/*********************************
+      Pause Coordination
+*********************************/
+
+/**
+ * Only allow the local player's controller to trigger pause.
+ * Remote players' START presses should not cause a local pause.
+ */
+s32 netplay_should_allow_pause(s32 controllerIndex) {
+    if (!gNetplayState.enabled) {
+        return TRUE;
+    }
+    return (controllerIndex == gNetplayState.localPlayer);
+}
+
+/*********************************
+        RNG Synchronization
+*********************************/
+
+/**
+ * Seed the game's LFSR RNG with the netplay-synchronized seed.
+ * Call at race start to ensure all players have identical RNG sequences.
+ * The seed comes from the gopher64 server's RNG exchange.
+ */
+void netplay_seed_rng(void) {
+    if (!gNetplayState.enabled) {
+        return;
+    }
+    // Re-read seed in case bridge updated it
+    gNetplayState.rngSeed = np_pi_read(NP_REG_RNG_SEED);
+    // MK64's RNG uses a 16-bit seed
+    gRandomSeed16 = (u16)(gNetplayState.rngSeed & 0xFFFF);
+}
+
+/*********************************
         State Queries
 *********************************/
 
@@ -222,7 +382,7 @@ s32 netplay_is_active(void) {
 
 s32 netplay_is_local_player(s32 playerIndex) {
     if (!gNetplayState.enabled) {
-        return TRUE; // When no netplay, all players are local
+        return TRUE;
     }
     return (playerIndex == gNetplayState.localPlayer);
 }

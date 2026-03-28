@@ -33,6 +33,15 @@
 #define NP_REG_RNG_SEED     0x3C  // R   - RNG seed from server
 #define NP_REG_PLAYER_COUNT 0x40  // R   - Number of players in session (1-4)
 #define NP_REG_MCU_FRAME_RDY 0x44 // R   - Latest frame number with remote data ready
+#define NP_REG_GAME_MODE    0x48  // R   - Game mode (VERSUS=2, BATTLE=3)
+#define NP_REG_COURSE_ID    0x4C  // R   - Course ID to play
+#define NP_REG_CHAR_SEL_0   0x50  // R   - Character selection for player 0
+#define NP_REG_CHAR_SEL_1   0x54  // R   - Character selection for player 1
+#define NP_REG_CHAR_SEL_2   0x58  // R   - Character selection for player 2
+#define NP_REG_CHAR_SEL_3   0x5C  // R   - Character selection for player 3
+#define NP_REG_RACE_START   0x60  // RW  - Race start sync flag
+#define NP_REG_DISCONNECT   0x64  // R   - Bitmask of disconnected players
+#define NP_REG_CC_SELECT    0x68  // R   - CC selection (0=50cc, 1=100cc, 2=150cc)
 
 // Magic value written by bridge when ready
 #define NP_MAGIC            0x4E455450  // "NETP"
@@ -41,12 +50,13 @@
 #define NP_STATUS_N64_READY     0x01  // N64 has initialized netplay
 #define NP_STATUS_IN_RACE       0x02  // N64 is currently in a race
 #define NP_STATUS_FRAME_DONE    0x04  // N64 finished processing current frame
+#define NP_STATUS_MENU_READY    0x08  // N64 is ready to start (menu bypassed)
 
-// NetLib packet types for bridge communication
-#define NETPKT_CONTROLLER_INPUT 0x01  // Controller input data
-#define NETPKT_FRAME_SYNC       0x02  // Frame synchronization
-#define NETPKT_GAME_STATE       0x03  // Game state update
-#define NETPKT_RNG_SEED         0x04  // RNG seed exchange
+// Race start sync values (NP_REG_RACE_START)
+#define NP_RACE_NOT_STARTED  0
+#define NP_RACE_ALL_READY    1  // Bridge sets when all players ready
+#define NP_RACE_COUNTDOWN    2  // Race countdown in progress
+#define NP_RACE_RUNNING      3  // Race is active
 
 // Input format: [buttons:16 | stick_x:8 | stick_y:8] (N64 native big-endian)
 #define NP_PACK_INPUT(buttons, stick_x, stick_y) \
@@ -72,6 +82,9 @@ typedef enum {
     NP_MODE_NETLIB        // Direct N64-NetLib USB packets (future)
 } NetplayMode;
 
+// Input delay ring buffer size (max frames of delay)
+#define NP_INPUT_DELAY_MAX 8
+
 typedef struct {
     NetplayMode mode;
     u8 localPlayer;       // Which player slot is ours (0-3)
@@ -82,7 +95,12 @@ typedef struct {
     u32 frameCounter;     // Current frame number
     u32 rngSeed;          // Synchronized RNG seed
     u8 inputDelay;        // Input delay frames
+    u8 disconnectMask;    // Bitmask of disconnected players
+    u8 raceStartSync;     // Race start sync state
     u32 remoteInputs[NP_MAX_PLAYERS]; // Cached remote controller inputs
+    // Input delay ring buffer for local input
+    u32 inputDelayBuffer[NP_INPUT_DELAY_MAX];
+    u8 inputDelayHead;    // Write position in ring buffer
 } NetplayState;
 
 /*********************************
@@ -107,6 +125,19 @@ void netplay_send_local_input(u16 buttons, s8 stick_x, s8 stick_y);
 
 // RNG seed for synchronization
 u32  netplay_get_rng_seed(void);
+void netplay_seed_rng(void);
+
+// Force game setup from bridge config (player count, mode, characters, course)
+void netplay_setup_game(void);
+
+// Race start sync - returns 1 when all players ready
+s32  netplay_wait_for_race_start(void);
+
+// Disconnect check - fills disconnected slots with neutral input
+void netplay_handle_disconnects(void);
+
+// Pause coordination - only local player can pause
+s32  netplay_should_allow_pause(s32 controllerIndex);
 
 // State queries
 s32  netplay_is_active(void);

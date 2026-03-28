@@ -24,6 +24,7 @@
 #include "math.h"
 #include "menus.h"
 #include "seq_ids.h"
+#include "netplay/netplay.h"
 
 #pragma intrinsic(sqrtf)
 
@@ -826,7 +827,8 @@ void func_8028F970(void) {
             }
         }
         if ((controller->buttonPressed & START_BUTTON) && (!(controller->button & R_TRIG)) &&
-            (!(controller->button & L_TRIG))) {
+            (!(controller->button & L_TRIG)) &&
+            netplay_should_allow_pause(i)) {
             func_8028DF00();
             gIsGamePaused = (controller - gControllerOne) + 1;
             controller->buttonPressed = 0;
