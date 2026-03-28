@@ -168,6 +168,7 @@ SECTIONS
       BUILD_DIR/asm/os/osWritebackDCache.o(.text);
       BUILD_DIR/asm/os/osMapTLBRdb.o(.text);
       BUILD_DIR/src/os/osPiRawReadIo.o(.text*);
+      BUILD_DIR/src/os/osPiRawWriteIo.o(.text*);
       BUILD_DIR/src/os/__osSetHWIntrRoutine.o(.text*);
       BUILD_DIR/src/os/__osLeoInterrupt.o(.text*);
       BUILD_DIR/src/os/osTimer.o(.text*);
@@ -333,6 +334,10 @@ SECTIONS
       BUILD_DIR/src/os/_Ldtob.o(.rodata*);
       BUILD_DIR/data/rsp.o(.data*);
       BUILD_DIR/src/audio/data.o(.data*);
+      /* GCC libgcc helpers (64-bit division, etc.) */
+      *libgcc.a:(.text*);
+      *libgcc.a:(.data*);
+      *libgcc.a:(.rodata*);
    }
    END_SEG(main)
 

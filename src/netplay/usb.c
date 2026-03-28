@@ -273,13 +273,9 @@ static u8 d64_extendedaddr = FALSE;
     
     // osPiRaw
     #if USE_OSRAW
-        extern s32 __osPiRawWriteIo(u32, u32);
-        extern s32 __osPiRawReadIo(u32, u32 *);
-        extern s32 __osPiRawStartDma(s32, u32, void *, u32);
-        
-        #define osPiRawWriteIo(a, b) __osPiRawWriteIo(a, b)
-        #define osPiRawReadIo(a, b) __osPiRawReadIo(a, b)
-        #define osPiRawStartDma(a, b, c, d) __osPiRawStartDma(a, b, c, d)
+        extern s32 osPiRawWriteIo(u32, u32);
+        extern s32 osPiRawReadIo(u32, u32 *);
+        extern s32 osPiRawStartDma(s32, u32, void *, u32);
     #endif
 #endif
 
