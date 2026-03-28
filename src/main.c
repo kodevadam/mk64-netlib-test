@@ -792,11 +792,13 @@ void race_logic_loop(void) {
                     handle_a_press_for_all_players_during_race();
                     func_8001EE98(gPlayerOneCopy, camera1, 0);
                     func_80029158();
-                    func_8001EE98(gPlayerTwo, camera2, 1);
+                    // In netplay, local viewports 2-4 follow local players' network slots
+                    // instead of hardcoded gPlayerTwo/Three/Four.
+                    func_8001EE98(netplay_is_active() ? &gPlayers[gNetplayState.localSlots[1]] : gPlayerTwo, camera2, 1);
                     func_800291E8();
-                    func_8001EE98(gPlayerThree, camera3, 2);
+                    func_8001EE98(netplay_is_active() ? &gPlayers[gNetplayState.localSlots[2]] : gPlayerThree, camera3, 2);
                     func_800291F0();
-                    func_8001EE98(gPlayerFour, camera4, 3);
+                    func_8001EE98(netplay_is_active() ? &gPlayers[gNetplayState.localSlots[3]] : gPlayerFour, camera4, 3);
                     func_800291F8();
                     func_8028F474();
                     func_80059AC8();
