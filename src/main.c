@@ -1200,10 +1200,10 @@ void thread5_game_loop(UNUSED void* arg) {
     netplay_init();
     netplay_detect();
 
-    // When netplay is active, fake controller detection bits so
-    // the game thinks all player ports have controllers plugged in.
-    // Without this, menu logic in menu_items.c skips absent ports.
+    // Silent matchmaking — auto create/join a room.
+    // Player proceeds through normal menus while netplay manages the room.
     if (netplay_is_active()) {
+        netplay_auto_matchmake();
         gControllerBits |= (u8)((1 << netplay_get_player_count()) - 1);
     }
 

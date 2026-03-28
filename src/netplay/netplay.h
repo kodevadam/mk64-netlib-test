@@ -28,4 +28,10 @@ void netplay_update_extended_controllers(void);
 // Slots 0-3 return gControllers[], slots 4-7 return netplay extended.
 struct Controller* netplay_get_controller(s32 slot);
 
+// Silent matchmaking — auto create/join room on boot.
+void netplay_auto_matchmake(void);
+
+// Simple text results overlay for all players.
+void netplay_render_results(void);
+
 #endif

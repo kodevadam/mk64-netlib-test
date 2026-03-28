@@ -22,6 +22,8 @@
 #include "main.h"
 #include "menus.h"
 #include "buffers/random.h"
+#include "render_objects.h"
+#include "menu_items.h"
 
 /*********************************
       Config Packet Parsing
@@ -350,5 +352,139 @@ void netplay_game_send_config(void) {
         netlib_writedword(seed);
         netlib_writebyte((uint8_t)gNetplayState.inputDelay);
         netlib_sendtoserver();
+    }
+}
+
+/*********************************
+    Silent Auto-Matchmaking
+*********************************/
+
+// Character name table (from menu_items.c)
+extern char* D_800E76A8[];
+
+/**
+ * Automatically connect and create/join a room on boot.
+ * Called once after netplay_detect() succeeds.
+ *
+ * The player goes through normal MK64 menus — character select,
+ * course select — while netplay silently manages the room.
+ * When the race starts, setup_race() calls netplay_send_game_config()
+ * and netplay_setup_game() to synchronize.
+ */
+void netplay_auto_matchmake(void) {
+    s32 i;
+
+    if (!gNetplayState.enabled || gNetplayState.mode != NP_MODE_NETLIB) {
+        return;
+    }
+
+    // Wait for connection to be established
+    if (!gNetplayState.connected) {
+        for (i = 0; i < 60; i++) {
+            netlib_poll();
+            if (gNetplayState.connected) break;
+        }
+        if (!gNetplayState.connected) return;
+    }
+
+    // Auto-create a room (first player to connect becomes host)
+    // Later joiners will list rooms and auto-join.
+    netplay_request_room_list();
+
+    // Poll for room list
+    for (i = 0; i < 30; i++) {
+        netlib_poll();
+        if (gNetplayState.roomListReceived) break;
+    }
+
+    if (gNetplayState.roomCount > 0 && !gNetplayState.rooms[0].inGame) {
+        // Join first available room
+        netplay_join_room(gNetplayState.rooms[0].id);
+    } else {
+        // No rooms — create one
+        netplay_create_room("MK64 Race", NP_MAX_PLAYERS);
+    }
+
+    // Poll for room join confirmation
+    for (i = 0; i < 30; i++) {
+        netlib_poll();
+        if (gNetplayState.lobbyState == NP_LOBBY_IN_ROOM) break;
+    }
+}
+
+/*********************************
+    Simple Results Display
+*********************************/
+
+/**
+ * Render a simple text-based race results overlay showing all
+ * players sorted by finishing position.
+ *
+ * Shows up to 8 lines: "1ST  MARIO", "2ND  LUIGI", etc.
+ * Uses MK64's debug text renderer which works on any screen mode.
+ *
+ * Call from the results screen rendering path.
+ */
+void netplay_render_results(void) {
+    s32 i, rank;
+    s32 x, y;
+    Player *ply;
+    s8 charId;
+    char *name;
+    char line[24];
+    static const char* suffixes[] = { "ST", "ND", "RD", "TH", "TH", "TH", "TH", "TH" };
+
+    if (!gNetplayState.enabled) {
+        return;
+    }
+
+    load_debug_font();
+
+    x = 80;
+    y = 40;
+
+    // Title
+    {
+        s32 tx = x, ty = y;
+        debug_print_string(&tx, &ty, "RACE RESULTS");
+    }
+    y += 16;
+
+    // For each rank position, find the player with that rank
+    for (rank = 0; rank < gNetplayState.playerCount && rank < NP_MAX_PLAYERS; rank++) {
+        for (i = 0; i < NP_MAX_PLAYERS; i++) {
+            ply = &gPlayers[i];
+            if (!(ply->type & PLAYER_EXISTS)) continue;
+            if (ply->currentRank == rank) {
+                charId = gCharacterSelections[i];
+                if (charId >= 0 && charId <= BOWSER) {
+                    name = D_800E76A8[charId];
+                } else {
+                    name = "???";
+                }
+
+                // Build line: "1ST  MARIO"
+                line[0] = '1' + rank;
+                line[1] = suffixes[rank][0];
+                line[2] = suffixes[rank][1];
+                line[3] = ' ';
+                line[4] = ' ';
+                {
+                    s32 j = 0;
+                    while (name[j] != '\0' && j < 18) {
+                        line[5 + j] = name[j];
+                        j++;
+                    }
+                    line[5 + j] = '\0';
+                }
+
+                {
+                    s32 lx = x, ly = y;
+                    debug_print_string(&lx, &ly, line);
+                }
+                y += 12;
+                break;
+            }
+        }
     }
 }

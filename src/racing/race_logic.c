@@ -1059,24 +1059,30 @@ void func_8028FCBC(void) {
             if (gDemoTimer != 0) {
                 gDemoTimer--;
             } else {
-                switch (gModeSelection) {
-                    case GRAND_PRIX:
-                        if (D_80150120 != 0) {
+                // In 5+ player netplay, use simple text results for all players.
+                // The original results screen only handles up to 4 human players.
+                if (netplay_is_active() && netplay_get_player_count() > 4) {
+                    netplay_render_results();
+                } else {
+                    switch (gModeSelection) {
+                        case GRAND_PRIX:
+                            if (D_80150120 != 0) {
+                                func_8028E678();
+                            } else if (gScreenModeSelection == SCREEN_MODE_1P) {
+                                func_80092564();
+                                D_800DC510 = 7;
+                            } else {
+                                func_8028E438();
+                            }
+                            break;
+                        case TIME_TRIALS:
                             func_8028E678();
-                        } else if (gScreenModeSelection == SCREEN_MODE_1P) {
-                            func_80092564();
-                            D_800DC510 = 7;
-                        } else {
+                            break;
+                        case VERSUS:
+                        case BATTLE:
                             func_8028E438();
-                        }
-                        break;
-                    case TIME_TRIALS:
-                        func_8028E678();
-                        break;
-                    case VERSUS:
-                    case BATTLE:
-                        func_8028E438();
-                        break;
+                            break;
+                    }
                 }
             }
             func_8028F4E8();
