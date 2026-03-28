@@ -272,27 +272,14 @@ s32 netplay_detect(void) {
         gNetplayState.localPlayerCount = 1;
     }
 
-    // Try N64-NetLib first (works on SC64, 64Drive, EverDrive)
+    // Try N64-NetLib first (works on SC64, 64Drive, EverDrive).
+    // Only detect the cart — do NOT send any USB data here.
+    // NetLib Browser initiates communication from the PC side.
     netlib_initialize();
     if (usb_getcart() != CART_NONE) {
-        s32 pollCount;
-
         gNetplayState.mode = NP_MODE_NETLIB;
         gNetplayState.enabled = TRUE;
         netplay_register_callbacks();
-
-        // Send connect packet and poll for server response.
-        // If no bridge/server is running, USB write times out (~100ms)
-        // and we continue with netplay enabled but not connected.
-        netlib_start(PKTID_CONNECT);
-        netlib_sendtoserver();
-
-        for (pollCount = 0; pollCount < 60; pollCount++) {
-            netlib_poll();
-            if (gNetplayState.connected) {
-                return TRUE;
-            }
-        }
         return TRUE;
     }
 

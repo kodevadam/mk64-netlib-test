@@ -477,8 +477,6 @@ char usb_initialize(void)
             return 0;
     }
 
-    // Send heartbeat so PC-side bridge knows we're ready
-    usb_sendheartbeat();
     return 1;
 }
 
