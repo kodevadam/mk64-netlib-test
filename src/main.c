@@ -1194,6 +1194,13 @@ void thread5_game_loop(UNUSED void* arg) {
     netplay_init();
     netplay_detect();
 
+    // When netplay is active, fake controller detection bits so
+    // the game thinks all player ports have controllers plugged in.
+    // Without this, menu logic in menu_items.c skips absent ports.
+    if (netplay_is_active()) {
+        gControllerBits |= (u8)((1 << netplay_get_player_count()) - 1);
+    }
+
     if (!wasSoftReset) {
         clear_nmi_buffer();
     }

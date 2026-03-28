@@ -918,6 +918,12 @@ void func_8028FCBC(void) {
     }
     switch (D_800DC510) {
         case 0:
+            // Wait for all netplay players to be ready before starting countdown.
+            // This holds the race at the pre-countdown state until the bridge
+            // signals that all players have loaded and are synchronized.
+            if (netplay_is_active() && !netplay_wait_for_race_start()) {
+                break;
+            }
             if (!gDemoMode) { // If we're not in the demo mode, play the starting fanfare for the current mode (Grand Prix / Time Trials / VS / Battle)
                 if (gModeSelection == GRAND_PRIX) {
                     play_sequence2(SEQ_EVENT_RACE_STARTING);
