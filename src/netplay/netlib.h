@@ -43,23 +43,18 @@
     #endif
 
     #ifndef LIBDRAGON
-        #ifndef _NETLIB_UINT_TYPES
-        #define _NETLIB_UINT_TYPES
-        typedef u8 uint8_t;
-        typedef u16 uint16_t;
-        typedef u32 uint32_t;
-        typedef u64 uint64_t;
-        #endif
+        /* ultratypes.h already defines uint8/16/32/64_t */
+        #include <PR/ultratypes.h>
     #endif
-    
+
     // Packet and client types
-    typedef uint8_t NetPacket;
-    typedef uint8_t ClientNumber;
-    
+    typedef u8 NetPacket;
+    typedef u8 ClientNumber;
+
     // Packet flags
     typedef enum {
         FLAG_UNRELIABLE = 0x01,
-        FLAG_EXPLICITACK = 0x02,
+        FLAG_EXPLICITACK = 0x02
     } PacketFlag;
     
     
