@@ -9,7 +9,7 @@
     //#define LIBDRAGON
     
     // Settings
-    #define USE_OSRAW          0           // Use PI manager for proper synchronization with game DMA
+    #define USE_OSRAW          1           // Use raw PI I/O (required for decomps that lack osPiWriteIo/osPiReadIo)
     #define DEBUG_ADDRESS_SIZE 8*1024*1024 // Max size of USB I/O. The bigger this value, the more ROM you lose!
     #define CHECK_EMULATOR     1           // Stops the USB library from working if it detects an emulator to prevent problems
     
